@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Archive.org Simple Viewer
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.4
 // @description  Simple viewer that works with Ctrl+F
 // @author       Franco Drachenberg
 // @match        https://archive.org/details/@*
@@ -13,11 +13,11 @@
   "use strict";
 
   console.log(
-    "[UserScript] Archive.org User Uploads Gallery - Script starting."
+    "[UserScript] Archive.org User Uploads Gallery - Script starting (v0.4)."
   );
 
   const HITS_PER_PAGE = 1000;
-  const MAX_RETRIES = 5;
+  const MAX_RETRIES = 7;
   const RETRY_DELAY = 1000;
 
   function getUsername() {
@@ -56,7 +56,6 @@
     const title = item.fields.title || identifier;
     const thumbnailUrl = `https://archive.org/services/img/${identifier}`;
     const itemUrl = `https://archive.org/details/${identifier}`;
-
     return `
             <a href="${itemUrl}" target="_blank" class="custom-gallery-item" title="${title}">
                 <img src="${thumbnailUrl}" alt="${title}" loading="lazy">
@@ -93,10 +92,7 @@
         );
         console.log("[UserScript DBG] HTML prompt shown.");
       } catch (e) {
-        console.warn(
-          "[UserScript WARN] Could not display prompt. This might happen if the script is run too early or in a restricted context.",
-          e
-        );
+        console.warn("[UserScript WARN] Could not display prompt.", e);
       }
     } else {
       console.log(
@@ -106,7 +102,10 @@
 
     if (targetElement) {
       targetElement.innerHTML = galleryHtml;
-      console.log("[UserScript DBG] Gallery HTML injected successfully.");
+      console.log(
+        "[UserScript DBG] Gallery HTML injected successfully into:",
+        targetElement
+      );
     } else {
       console.error(
         "[UserScript ERR] Target element for gallery injection not found."
@@ -146,7 +145,15 @@
               response.responseText.substring(0, 500)
             );
             const jsonData = JSON.parse(response.responseText);
-            console.log("[UserScript DBG] Parsed API Response Data:", jsonData);
+            console.log(
+              "[UserScript DBG] Parsed API Response Data (structure check):",
+              jsonData &&
+                jsonData.response &&
+                jsonData.response.body &&
+                jsonData.response.body.page_elements
+                ? "Basic structure OK"
+                : "Basic structure NOT OK"
+            );
 
             if (
               jsonData &&
@@ -159,7 +166,9 @@
                 jsonData.response.body.page_elements.uploads.hits.hits
               )
             ) {
-              console.log("[UserScript DBG] Expected JSON structure found.");
+              console.log(
+                "[UserScript DBG] Expected JSON structure for uploads found."
+              );
               const items =
                 jsonData.response.body.page_elements.uploads.hits.hits;
               console.log(
@@ -182,7 +191,7 @@
               injectGallery(galleryHtml, targetElement);
             } else {
               console.error(
-                "[UserScript ERR] Unexpected JSON structure from API:",
+                "[UserScript ERR] Unexpected JSON structure from API (uploads path):",
                 jsonData
               );
               displayMessage(
@@ -236,30 +245,46 @@
 
   function findTargetElement(retriesLeft = MAX_RETRIES) {
     console.log(
-      `[UserScript DBG] Attempting to find target element. Retries left: ${retriesLeft}`
+      `[UserScript DBG] Attempting to find target element (new path). Retries left: ${retriesLeft}`
     );
     const appRoot = document.querySelector("app-root");
-    console.log("[UserScript DBG] appRoot:", appRoot);
+    console.log("[UserScript DBG] appRoot:", appRoot ? "Found" : "Not found");
     if (appRoot && appRoot.shadowRoot) {
-      console.log("[UserScript DBG] appRoot.shadowRoot found.");
+      console.log("[UserScript DBG] appRoot.shadowRoot: Exists");
       const userProfile = appRoot.shadowRoot.querySelector("user-profile");
-      console.log("[UserScript DBG] userProfile:", userProfile);
+      console.log(
+        "[UserScript DBG] userProfile:",
+        userProfile ? "Found" : "Not found"
+      );
       if (userProfile && userProfile.shadowRoot) {
-        console.log("[UserScript DBG] userProfile.shadowRoot found.");
+        console.log("[UserScript DBG] userProfile.shadowRoot: Exists");
         const tabManager = userProfile.shadowRoot.querySelector("tab-manager");
-        console.log("[UserScript DBG] tabManager:", tabManager);
-        if (tabManager) {
-          console.log(
-            "[UserScript DBG] Target element (tab-manager) found successfully!"
+        console.log(
+          "[UserScript DBG] tabManager:",
+          tabManager ? "Found" : "Not found"
+        );
+        if (tabManager && tabManager.shadowRoot) {
+          console.log("[UserScript DBG] tabManager.shadowRoot: Exists");
+          const activeTabContent = tabManager.shadowRoot.querySelector(
+            ".active-tab-content"
           );
-          return tabManager;
+          console.log(
+            "[UserScript DBG] .active-tab-content:",
+            activeTabContent ? "Found" : "Not found"
+          );
+          if (activeTabContent) {
+            console.log(
+              "[UserScript DBG] Target element (.active-tab-content) found successfully!"
+            );
+            return activeTabContent;
+          }
         }
       }
     }
 
     if (retriesLeft > 0) {
       console.log(
-        `[UserScript DBG] Target element not found, ${
+        `[UserScript DBG] Target element not found with new path, ${
           retriesLeft - 1
         } retries left. Trying again in ${RETRY_DELAY}ms...`
       );
@@ -284,13 +309,13 @@
       return null;
     } else {
       console.error(
-        "[UserScript ERR] Failed to find the target Shadow DOM element (tab-manager) after multiple retries."
+        "[UserScript ERR] Failed to find the target Shadow DOM element (.active-tab-content) after multiple retries."
       );
       const fallbackDiv = document.createElement("div");
       fallbackDiv.id = "fallback-gallery-container";
-      fallbackDiv.innerHTML = `<div id="gallery-error-message">Could not find the designated spot to place the gallery. Displaying here instead.</div>`;
+      fallbackDiv.innerHTML = `<div id="gallery-error-message">Could not find the designated spot to place the gallery (.active-tab-content). Displaying here instead.</div>`;
 
-      const mainContent = document.querySelector("main") || document.body;
+      const mainContentArea = document.querySelector("main") || document.body;
       const userProfileElement = document
         .querySelector("app-root")
         ?.shadowRoot?.querySelector("user-profile");
@@ -305,7 +330,7 @@
           "[UserScript DBG] Appended fallback container after app-root element."
         );
       } else {
-        mainContent.appendChild(fallbackDiv);
+        mainContentArea.appendChild(fallbackDiv);
         console.log(
           "[UserScript DBG] Appended fallback container to main content or body."
         );
@@ -351,23 +376,28 @@
     console.error(
       "[UserScript ERR] Could not determine username from URL. Script cannot proceed to fetch uploads."
     );
-    const appRoot = document.querySelector("app-root");
-    if (appRoot && appRoot.shadowRoot) {
-      const userProfile = appRoot.shadowRoot.querySelector("user-profile");
-      if (userProfile && userProfile.shadowRoot) {
-        const tabManager = userProfile.shadowRoot.querySelector("tab-manager");
-        if (tabManager) {
-          displayMessage(
-            tabManager,
-            "Error: Could not determine username from URL to fetch uploads.",
-            "gallery-error-message"
-          );
-        } else {
-          console.warn(
-            "[UserScript WARN] tab-manager not found for displaying username error."
-          );
+
+    let errorDisplayTarget = document.querySelector(".active-tab-content");
+    if (!errorDisplayTarget) {
+      const appRoot = document.querySelector("app-root");
+      if (appRoot && appRoot.shadowRoot) {
+        const userProfile = appRoot.shadowRoot.querySelector("user-profile");
+        if (userProfile && userProfile.shadowRoot) {
+          errorDisplayTarget =
+            userProfile.shadowRoot.querySelector("tab-manager");
         }
       }
+    }
+    if (errorDisplayTarget) {
+      displayMessage(
+        errorDisplayTarget,
+        "Error: Could not determine username from URL to fetch uploads.",
+        "gallery-error-message"
+      );
+    } else {
+      console.warn(
+        "[UserScript WARN] No suitable element found to display initial username error."
+      );
     }
   }
   console.log(
