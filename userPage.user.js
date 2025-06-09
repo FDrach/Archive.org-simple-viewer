@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Archive.org Simple Viewer
 // @namespace    http://tampermonkey.net/
-// @version      0.6
+// @version      0.7
 // @description  Simple viewer that works with Ctrl+F
 // @author       Franco Drachenberg
 // @match        https://archive.org/details/@*
@@ -13,17 +13,24 @@
   "use strict";
 
   console.log(
-    "[UserScript] Archive.org User Uploads Gallery - Script starting (v0.6)."
+    "[UserScript] Archive.org User Uploads Gallery - Script starting (v0.7)."
   );
 
   const HITS_PER_PAGE = 1000;
   const MAX_RETRIES = 7;
   const RETRY_DELAY = 1000;
 
+  const iconDownloads =
+    '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="#333" d="M98 51a235 235 0 0 0-10-14 83 83 0 0 0-16-13l-10-5a37 37 0 0 0-24 0l-10 5A83 83 0 0 0 3 49l-1 2a235 235 0 0 0 10 13 83 83 0 0 0 16 13l10 5a38 38 0 0 0 24 0l10-5 9-6 7-7c3-2 4-5 5-7l4-5zm-25 0c0 6-2 12-6 16s-11 7-17 7c-7 0-12-2-17-7s-7-10-7-16 3-12 7-17 10-7 17-7c6 0 12 2 17 7s6 10 6 17zM50 40c3 0 5 1 7 3a10 10 0 0 1 0 15c-2 2-4 3-7 3s-5-1-7-3-3-5-3-7c0-3 1-6 3-8s4-3 7-3z"/></svg>';
+  const iconFavorites =
+    '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="#333" d="M81 100 50 77l-31 23 11-37L0 37h38L50 0l12 37h38L70 63z"/></svg>';
+  const iconReviews =
+    '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="#333" d="m100 8-2-6-6-2H8L2 2 0 8v51l2 6 6 2h10l1 33 32-33h41l6-2c2-1 2-4 2-6z"/></svg>';
+
   const galleryCSS = `
         #custom-user-uploads-gallery {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 15px;
             padding: 20px;
             background-color: #f9f9f9;
@@ -72,17 +79,37 @@
         }
         .custom-gallery-item-meta {
             margin-bottom: 3px;
+            display: flex;
+            align-items: center;
+        }
+        .custom-gallery-item-meta.stats-line {
+            justify-content: space-around;
+            margin-top: 4px;
+            padding-top: 4px;
+            border-top: 1px dashed #eee;
+        }
+        .custom-gallery-item-meta.stats-line > div {
+            display: flex;
+            align-items: center;
+        }
+        .meta-icon {
+            width: 1em; 
+            height: 1em;
+            margin-right: 4px;
+            vertical-align: middle;
         }
         .custom-gallery-item-meta strong {
             color: #555;
+            margin-right: 4px;
         }
         .custom-gallery-item-subjects {
             margin-top: 4px;
             font-style: italic;
             color: #666;
-            max-height: 4.5em;
+            max-height: 3.6em;
             overflow-y: auto;
             word-break: break-word;
+            line-height: 1.2em;
         }
         #gallery-loading-message, #gallery-error-message {
             font-size: 1.2em;
@@ -165,7 +192,7 @@
     const subjects =
       fields.subject && fields.subject.length > 0
         ? fields.subject.join(", ")
-        : "None";
+        : "<i>None</i>";
 
     return `
             <div class="custom-gallery-item">
@@ -177,10 +204,12 @@
                     <div class="custom-gallery-item-meta"><strong>Creator:</strong> ${creator}</div>
                     <div class="custom-gallery-item-meta"><strong>Added:</strong> ${addedDate}</div>
                     <div class="custom-gallery-item-meta"><strong>Size:</strong> ${itemSize}</div>
-                    <div class="custom-gallery-item-meta"><strong>Downloads:</strong> ${downloads.toLocaleString()}</div>
-                    <div class="custom-gallery-item-meta"><strong>Favorites:</strong> ${numFavorites}</div>
-                    <div class="custom-gallery-item-meta"><strong>Reviews:</strong> ${numReviews}</div>
-                    <div class="custom-gallery-item-subjects"><strong>Subjects:</strong> ${subjects}</div>
+                    <div class="custom-gallery-item-meta stats-line">
+                        <div>${iconDownloads} ${downloads.toLocaleString()}</div>
+                        <div>${iconFavorites} ${numFavorites}</div>
+                        <div>${iconReviews} ${numReviews}</div>
+                    </div>
+                    <div class="custom-gallery-item-subjects">${subjects}</div>
                 </div>
             </div>
         `;
