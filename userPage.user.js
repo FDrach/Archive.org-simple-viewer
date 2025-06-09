@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Archive.org Simple Viewer
 // @namespace    http://tampermonkey.net/
-// @version      0.5
+// @version      0.6
 // @description  Simple viewer that works with Ctrl+F
 // @author       Franco Drachenberg
 // @match        https://archive.org/details/@*
@@ -13,7 +13,7 @@
   "use strict";
 
   console.log(
-    "[UserScript] Archive.org User Uploads Gallery - Script starting (v0.5)."
+    "[UserScript] Archive.org User Uploads Gallery - Script starting (v0.6)."
   );
 
   const HITS_PER_PAGE = 1000;
@@ -34,7 +34,6 @@
         .custom-gallery-item {
             display: flex;
             flex-direction: column;
-            align-items: center;
             text-decoration: none;
             color: #333;
             border: 1px solid #ccc;
@@ -47,21 +46,43 @@
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             border-color: #aaa;
         }
+        .custom-gallery-item-thumbnail-link {
+            display: block;
+        }
         .custom-gallery-item img {
             width: 100%;
             height: 120px;
             object-fit: cover;
             border-bottom: 1px solid #eee;
         }
-        .custom-gallery-item-title {
-            font-size: 0.85em;
+        .custom-gallery-item-info {
             padding: 8px;
-            text-align: center;
-            width: 100%;
+            font-size: 0.8em;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .custom-gallery-item-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 5px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            box-sizing: border-box;
+        }
+        .custom-gallery-item-meta {
+            margin-bottom: 3px;
+        }
+        .custom-gallery-item-meta strong {
+            color: #555;
+        }
+        .custom-gallery-item-subjects {
+            margin-top: 4px;
+            font-style: italic;
+            color: #666;
+            max-height: 4.5em;
+            overflow-y: auto;
+            word-break: break-word;
         }
         #gallery-loading-message, #gallery-error-message {
             font-size: 1.2em;
@@ -102,16 +123,66 @@
     return apiUrl;
   }
 
+  function formatBytes(bytes, decimals = 2) {
+    if (!+bytes) return "0 Bytes";
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+  }
+
+  function formatDate(dateString) {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, "0");
+      const day = date.getDate().toString().padStart(2, "0");
+      return `${year}/${month}/${day}`;
+    } catch (e) {
+      console.warn("Error formatting date:", dateString, e);
+      return dateString;
+    }
+  }
+
   function createGalleryItemHtml(item) {
-    const identifier = item.fields.identifier;
-    const title = item.fields.title || identifier;
+    const fields = item.fields;
+    const identifier = fields.identifier;
+    const title = fields.title || identifier;
     const thumbnailUrl = `https://archive.org/services/img/${identifier}`;
     const itemUrl = `https://archive.org/details/${identifier}`;
+
+    const numFavorites = fields.num_favorites || 0;
+    const numReviews = fields.num_reviews || 0;
+    const itemSize = fields.item_size ? formatBytes(fields.item_size) : "N/A";
+    const downloads = fields.downloads || 0;
+    const addedDate = formatDate(fields.addeddate);
+    const creator =
+      fields.creator && fields.creator.length > 0
+        ? fields.creator.join(", ")
+        : "Unset";
+    const subjects =
+      fields.subject && fields.subject.length > 0
+        ? fields.subject.join(", ")
+        : "None";
+
     return `
-            <a href="${itemUrl}" target="_blank" class="custom-gallery-item" title="${title}">
-                <img src="${thumbnailUrl}" alt="${title}" loading="lazy">
-                <div class="custom-gallery-item-title">${title}</div>
-            </a>
+            <div class="custom-gallery-item">
+                <a href="${itemUrl}" target="_blank" class="custom-gallery-item-thumbnail-link" title="View ${title} details">
+                    <img src="${thumbnailUrl}" alt="${title}" loading="lazy">
+                </a>
+                <div class="custom-gallery-item-info">
+                    <div class="custom-gallery-item-title" title="${title}">${title}</div>
+                    <div class="custom-gallery-item-meta"><strong>Creator:</strong> ${creator}</div>
+                    <div class="custom-gallery-item-meta"><strong>Added:</strong> ${addedDate}</div>
+                    <div class="custom-gallery-item-meta"><strong>Size:</strong> ${itemSize}</div>
+                    <div class="custom-gallery-item-meta"><strong>Downloads:</strong> ${downloads.toLocaleString()}</div>
+                    <div class="custom-gallery-item-meta"><strong>Favorites:</strong> ${numFavorites}</div>
+                    <div class="custom-gallery-item-meta"><strong>Reviews:</strong> ${numReviews}</div>
+                    <div class="custom-gallery-item-subjects"><strong>Subjects:</strong> ${subjects}</div>
+                </div>
+            </div>
         `;
   }
 
@@ -132,7 +203,6 @@
     console.log(
       "[UserScript DBG] Attempting to inject gallery HTML with embedded styles."
     );
-
     const fullHtmlToInject = `<style>${galleryCSS}</style>${galleryContentHtml}`;
 
     if (
@@ -304,29 +374,13 @@
       `[UserScript DBG] Attempting to find target element (new path). Retries left: ${retriesLeft}`
     );
     const appRoot = document.querySelector("app-root");
-    console.log("[UserScript DBG] appRoot:", appRoot ? "Found" : "Not found");
     if (appRoot && appRoot.shadowRoot) {
-      console.log("[UserScript DBG] appRoot.shadowRoot: Exists");
       const userProfile = appRoot.shadowRoot.querySelector("user-profile");
-      console.log(
-        "[UserScript DBG] userProfile:",
-        userProfile ? "Found" : "Not found"
-      );
       if (userProfile && userProfile.shadowRoot) {
-        console.log("[UserScript DBG] userProfile.shadowRoot: Exists");
         const tabManager = userProfile.shadowRoot.querySelector("tab-manager");
-        console.log(
-          "[UserScript DBG] tabManager:",
-          tabManager ? "Found" : "Not found"
-        );
         if (tabManager && tabManager.shadowRoot) {
-          console.log("[UserScript DBG] tabManager.shadowRoot: Exists");
           const activeTabContent = tabManager.shadowRoot.querySelector(
             ".active-tab-content"
-          );
-          console.log(
-            "[UserScript DBG] .active-tab-content:",
-            activeTabContent ? "Found" : "Not found"
           );
           if (activeTabContent) {
             console.log(
@@ -369,40 +423,27 @@
       );
       const fallbackDiv = document.createElement("div");
       fallbackDiv.id = "fallback-gallery-container";
-
       const currentUsername = getUsername();
       if (currentUsername) {
         const fallbackHtml = `<div id="gallery-error-message">Could not find the designated spot to place the gallery (.active-tab-content). Displaying here instead.</div>`;
         fallbackDiv.innerHTML = `<style>${galleryCSS}</style>${fallbackHtml}`;
-
         const mainContentArea = document.querySelector("main") || document.body;
         const userProfileElement = document
           .querySelector("app-root")
           ?.shadowRoot?.querySelector("user-profile");
         if (userProfileElement) {
           userProfileElement.insertAdjacentElement("afterend", fallbackDiv);
-          console.log(
-            "[UserScript DBG] Appended fallback container after user-profile element."
-          );
         } else if (appRoot) {
           appRoot.insertAdjacentElement("afterend", fallbackDiv);
-          console.log(
-            "[UserScript DBG] Appended fallback container after app-root element."
-          );
         } else {
           mainContentArea.appendChild(fallbackDiv);
-          console.log(
-            "[UserScript DBG] Appended fallback container to main content or body."
-          );
         }
         fetchAndDisplayUploads(currentUsername, fallbackDiv);
       } else {
         fallbackDiv.innerHTML = `<style>${galleryCSS}</style><div id="gallery-error-message">Could not determine username from URL for fallback.</div>`;
-        console.error(
-          "[UserScript ERR] Username is null, cannot fetch uploads for fallback."
+        (document.querySelector("main") || document.body).appendChild(
+          fallbackDiv
         );
-        const mainContentArea = document.querySelector("main") || document.body;
-        mainContentArea.appendChild(fallbackDiv);
       }
       return null;
     }
@@ -416,7 +457,6 @@
   if (username) {
     console.log("[UserScript DBG] Username obtained:", username);
     const initialTargetElement = findTargetElement();
-
     if (initialTargetElement) {
       console.log(
         "[UserScript DBG] Target element found on first try. Fetching uploads."
@@ -444,7 +484,8 @@
               ".active-tab-content"
             );
           }
-          if (!errorDisplayTarget) errorDisplayTarget = tabManager;
+          if (!errorDisplayTarget && tabManager)
+            errorDisplayTarget = tabManager;
         }
       }
     } catch (e) {
