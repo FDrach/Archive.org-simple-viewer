@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Archive.org Simple Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @description  Simple viewer that works with Ctrl+F
 // @author       Franco Drachenberg
 // @match        https://archive.org/details/@*
@@ -13,10 +13,10 @@
   "use strict";
 
   console.log(
-    "[UserScript] Archive.org User Uploads Gallery - Script starting (v1.1)."
+    "[UserScript] Archive.org User Uploads Gallery - Script starting (v1.2)."
   );
 
-  const HITS_PER_PAGE = 1000;
+  const HITS_PER_PAGE = 250;
   const MAX_RETRIES = 7;
   const RETRY_DELAY = 1000;
 
@@ -162,19 +162,7 @@
   function getUsername() {
     return window.location.pathname.split("/@").pop().split("/")[0];
   }
-  function buildApiUrl(username) {
-    const p = new URLSearchParams({
-      user_query: "",
-      page_type: "account_details",
-      page_target: `@${username}`,
-      page_elements: '["uploads"]',
-      hits_per_page: HITS_PER_PAGE.toString(),
-      page: "1",
-      sort: "publicdate:desc",
-      aggregations: "false",
-    });
-    return `https://archive.org/services/search/beta/page_production/?${p.toString()}`;
-  }
+
   function formatBytes(bytes, decimals = 1) {
     if (!+bytes) return "0B";
     const k = 1024;
@@ -260,13 +248,24 @@
           `;
   }
 
+  function updateLoadingMessage(targetEl, message) {
+    if (!targetEl) return;
+    let loadingDiv = targetEl.querySelector("#gallery-loading-message");
+    if (loadingDiv) {
+      loadingDiv.textContent = message;
+    } else {
+      targetEl.innerHTML = `<style>${galleryCSS}</style><div id="gallery-loading-message">${message}</div>`;
+    }
+  }
+
   function displayMessage(targetElement, message, id) {
     if (targetElement) {
       const wrapper = targetElement.querySelector("#custom-gallery-wrapper");
       const mainContent = targetElement.querySelector(
         "#custom-gallery-main-content"
       );
-      const injectionPoint = mainContent || wrapper || targetElement;
+
+      const injectionPoint = mainContent || targetElement;
       injectionPoint.innerHTML = `<style>${galleryCSS}</style><div id="${id}">${message}</div>`;
     } else {
       console.warn(
@@ -324,15 +323,13 @@
             const subjectArray = fields.subject
               ? fields.subject.map((s) => (s || "").toLowerCase())
               : [];
-
-            return searchWords.every((word) => {
-              return (
+            return searchWords.every(
+              (word) =>
                 title.includes(word) ||
                 identifier.includes(word) ||
                 creatorArray.some((c) => c.includes(word)) ||
                 subjectArray.some((s) => s.includes(word))
-              );
-            });
+            );
           });
         }
       }
@@ -341,19 +338,12 @@
     const galleryDiv = currentTargetElement.querySelector(
       "#custom-user-uploads-gallery"
     );
-    if (galleryDiv) {
-      galleryDiv.innerHTML = buildGalleryItemsHtml(filteredItems);
-    }
-
+    if (galleryDiv) galleryDiv.innerHTML = buildGalleryItemsHtml(filteredItems);
     const resultsCountEl = currentTargetElement.querySelector(
       "#results-count-area"
     );
-    if (resultsCountEl) {
+    if (resultsCountEl)
       resultsCountEl.textContent = `Displaying ${filteredItems.length} of ${allFetchedItems.length} items`;
-    }
-    console.log(
-      `[UserScript DBG] Searched for "${rawSearchInput}", found ${filteredItems.length} items.`
-    );
   }
 
   function injectLayoutAndGallery(
@@ -376,13 +366,11 @@
     if (targetElement) {
       targetElement.innerHTML = fullHtmlToInject;
       const searchInput = targetElement.querySelector("#gallery-search-input");
-      if (searchInput) {
-        searchInput.addEventListener("input", handleSearch);
-      } else {
+      if (searchInput) searchInput.addEventListener("input", handleSearch);
+      else
         console.warn(
           "[UserScript WARN] Search input not found after injection."
         );
-      }
     } else {
       console.error(
         "[UserScript ERR] Target element for layout injection not found."
@@ -394,87 +382,226 @@
     }
   }
 
-  function fetchAndDisplayUploads(username, targetElement) {
-    const apiUrl = buildApiUrl(username);
-    targetElement.innerHTML = `<style>${galleryCSS}</style><div id="gallery-loading-message">Loading user uploads...</div>`;
+  function fetchPageData(username, pageNumber) {
+    return new Promise((resolve, reject) => {
+      const params = new URLSearchParams({
+        user_query: "",
+        page_type: "account_details",
+        page_target: `@${username}`,
+        page_elements: '["uploads"]',
+        hits_per_page: HITS_PER_PAGE.toString(),
+        page: pageNumber.toString(),
+        sort: "publicdate:desc",
+        aggregations: "false",
+      });
+      const apiUrl = `https://archive.org/services/search/beta/page_production/?${params.toString()}`;
+      console.log(
+        `[UserScript DBG] Fetching page ${pageNumber} from: ${apiUrl}`
+      );
 
-    GM_xmlhttpRequest({
-      method: "GET",
-      url: apiUrl,
-      onload: function (response) {
-        if (response.status >= 200 && response.status < 300) {
-          try {
-            const jsonData = JSON.parse(response.responseText);
-            if (jsonData?.response?.body?.page_elements?.uploads?.hits?.hits) {
-              allFetchedItems =
-                jsonData.response.body.page_elements.uploads.hits.hits;
-              console.log(
-                `[UserScript DBG] Found ${allFetchedItems.length} total items.`
-              );
-              const initialSidebarHtml = buildSidebarHtml(
-                allFetchedItems.length,
-                allFetchedItems.length
-              );
-              const initialGalleryItemsHtml =
-                buildGalleryItemsHtml(allFetchedItems);
-              injectLayoutAndGallery(
-                initialGalleryItemsHtml,
-                initialSidebarHtml,
-                targetElement
-              );
-            } else {
+      GM_xmlhttpRequest({
+        method: "GET",
+        url: apiUrl,
+        onload: function (response) {
+          if (response.status >= 200 && response.status < 300) {
+            try {
+              const jsonData = JSON.parse(response.responseText);
+              const hitsNode =
+                jsonData?.response?.body?.page_elements?.uploads?.hits;
+              if (hitsNode) {
+                const items = hitsNode.hits || [];
+                const totalHits = pageNumber === 1 ? hitsNode.total : null;
+                resolve({ items, totalHits });
+              } else {
+                console.error(
+                  "[UserScript ERR] Unexpected JSON structure for page",
+                  pageNumber,
+                  jsonData
+                );
+                reject(
+                  new Error(`Unexpected JSON structure for page ${pageNumber}`)
+                );
+              }
+            } catch (e) {
               console.error(
-                "[UserScript ERR] Unexpected JSON structure:",
-                jsonData
+                "[UserScript ERR] Error parsing JSON for page",
+                pageNumber,
+                e
               );
-              displayMessage(
-                targetElement,
-                "Error: API response structure is not as expected.",
-                "gallery-error-message"
+              reject(
+                new Error(
+                  `Error parsing JSON for page ${pageNumber}: ${e.message}`
+                )
               );
             }
-          } catch (e) {
-            console.error("[UserScript ERR] Error parsing JSON:", e);
-            displayMessage(
-              targetElement,
-              "Error: Could not parse API response.",
-              "gallery-error-message"
+          } else {
+            console.error(
+              "[UserScript ERR] API request failed for page",
+              pageNumber,
+              "Status:",
+              response.status
+            );
+            reject(
+              new Error(
+                `API request failed for page ${pageNumber}. Status: ${response.status}`
+              )
             );
           }
-        } else {
+        },
+        onerror: function (error) {
           console.error(
-            "[UserScript ERR] API request failed. Status:",
-            response.status
+            "[UserScript ERR] Network error fetching page",
+            pageNumber,
+            error
           );
-          displayMessage(
-            targetElement,
-            `Error: API request failed (${response.status})`,
-            "gallery-error-message"
+          reject(
+            new Error(
+              `Network error fetching page ${pageNumber}: ${
+                error.message || "Unknown GM_xmlhttpRequest error"
+              }`
+            )
           );
-        }
-      },
-      onerror: function (error) {
-        console.error("[UserScript ERR] API request error:", error);
-        displayMessage(
-          targetElement,
-          "Error: Network error while fetching uploads.",
-          "gallery-error-message"
-        );
-      },
+        },
+      });
     });
   }
 
+  function finalizeDisplay(targetElement) {
+    console.log(
+      `[UserScript DBG] Finalizing display with ${allFetchedItems.length} items.`
+    );
+    if (allFetchedItems.length === 0) {
+      let loadingMessageElement = targetElement.querySelector(
+        "#gallery-loading-message"
+      );
+      if (loadingMessageElement || targetElement.innerHTML.trim() === "") {
+        displayMessage(
+          targetElement,
+          "No uploads found for this user after checking all pages.",
+          "gallery-error-message"
+        );
+        return;
+      }
+    }
+    const initialSidebarHtml = buildSidebarHtml(
+      allFetchedItems.length,
+      allFetchedItems.length
+    );
+    const initialGalleryItemsHtml = buildGalleryItemsHtml(allFetchedItems);
+    injectLayoutAndGallery(
+      initialGalleryItemsHtml,
+      initialSidebarHtml,
+      targetElement
+    );
+  }
+
+  function fetchAndDisplayUploads(username, targetElement) {
+    allFetchedItems = [];
+    updateLoadingMessage(targetElement, "Loading user uploads (Page 1)...");
+
+    fetchPageData(username, 1)
+      .then((initialPageData) => {
+        if (
+          !initialPageData ||
+          typeof initialPageData.totalHits === "undefined"
+        ) {
+          displayMessage(
+            targetElement,
+            "Error: Could not retrieve initial page data or total count.",
+            "gallery-error-message"
+          );
+          return;
+        }
+
+        allFetchedItems = initialPageData.items || [];
+        const totalHits = initialPageData.totalHits;
+        const totalPages = Math.ceil(totalHits / HITS_PER_PAGE);
+
+        console.log(
+          `[UserScript DBG] Initial fetch: ${allFetchedItems.length} items. Total hits from API: ${totalHits}. Calculated total pages: ${totalPages}.`
+        );
+
+        if (totalHits === 0) {
+          finalizeDisplay(targetElement);
+          return;
+        }
+
+        if (totalPages > 1) {
+          updateLoadingMessage(
+            targetElement,
+            `Loading user uploads (1 of ${totalPages} pages complete)...`
+          );
+          const pagePromises = [];
+          for (let i = 2; i <= totalPages; i++) {
+            pagePromises.push(
+              fetchPageData(username, i).then((pageData) => {
+                updateLoadingMessage(
+                  targetElement,
+                  `Loading user uploads (${
+                    i - 1
+                  } of ${totalPages} pages complete)...`
+                );
+                return pageData;
+              })
+            );
+          }
+
+          Promise.all(pagePromises)
+            .then((pagesDataArray) => {
+              pagesDataArray.forEach((pageResult) => {
+                if (pageResult && pageResult.items) {
+                  allFetchedItems = allFetchedItems.concat(pageResult.items);
+                }
+              });
+              console.log(
+                `[UserScript DBG] All pages fetched. Total items collected: ${allFetchedItems.length}.`
+              );
+              finalizeDisplay(targetElement);
+            })
+            .catch((error) => {
+              console.error(
+                "[UserScript ERR] Error fetching one or more subsequent pages:",
+                error
+              );
+              displayMessage(
+                targetElement,
+                `Error fetching all pages: ${
+                  error.message || error
+                }. Displaying partial results (${
+                  allFetchedItems.length
+                } items).`,
+                "gallery-error-message"
+              );
+              setTimeout(() => finalizeDisplay(targetElement), 3000);
+            });
+        } else {
+          finalizeDisplay(targetElement);
+        }
+      })
+      .catch((error) => {
+        console.error(
+          "[UserScript ERR] Error fetching initial page (page 1):",
+          error
+        );
+        displayMessage(
+          targetElement,
+          `Error fetching initial page data: ${error.message || error}`,
+          "gallery-error-message"
+        );
+      });
+  }
+
   function findTargetElement(retriesLeft = MAX_RETRIES) {
-    const appRoot = document
+    const activeTabContent = document
       .querySelector("app-root")
       ?.shadowRoot?.querySelector("user-profile")
       ?.shadowRoot?.querySelector("tab-manager")
       ?.shadowRoot?.querySelector(".active-tab-content");
-    if (appRoot) {
+    if (activeTabContent) {
       console.log(
         "[UserScript DBG] Target element (.active-tab-content) found!"
       );
-      return appRoot;
+      return activeTabContent;
     }
     if (retriesLeft > 0) {
       console.log(
@@ -486,15 +613,14 @@
         const foundElement = findTargetElement(retriesLeft - 1);
         if (foundElement) {
           const currentUsername = getUsername();
-          if (currentUsername) {
+          if (currentUsername)
             fetchAndDisplayUploads(currentUsername, foundElement);
-          } else {
+          else
             displayMessage(
               foundElement,
               "Error: Username became null during retry.",
               "gallery-error-message"
             );
-          }
         }
       }, RETRY_DELAY);
       return null;
