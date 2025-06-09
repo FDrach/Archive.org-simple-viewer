@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Archive.org Simple Viewer
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.5
 // @description  Simple viewer that works with Ctrl+F
 // @author       Franco Drachenberg
 // @match        https://archive.org/details/@*
@@ -13,12 +13,63 @@
   "use strict";
 
   console.log(
-    "[UserScript] Archive.org User Uploads Gallery - Script starting (v0.4)."
+    "[UserScript] Archive.org User Uploads Gallery - Script starting (v0.5)."
   );
 
   const HITS_PER_PAGE = 1000;
   const MAX_RETRIES = 7;
   const RETRY_DELAY = 1000;
+
+  const galleryCSS = `
+        #custom-user-uploads-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .custom-gallery-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #333;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            overflow: hidden;
+            background-color: #fff;
+            transition: box-shadow 0.2s ease-in-out;
+        }
+        .custom-gallery-item:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-color: #aaa;
+        }
+        .custom-gallery-item img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-bottom: 1px solid #eee;
+        }
+        .custom-gallery-item-title {
+            font-size: 0.85em;
+            padding: 8px;
+            text-align: center;
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            box-sizing: border-box;
+        }
+        #gallery-loading-message, #gallery-error-message {
+            font-size: 1.2em;
+            padding: 20px;
+            text-align: center;
+            color: #555;
+        }
+    `;
 
   function getUsername() {
     console.log(
@@ -69,7 +120,7 @@
       `[UserScript DBG] Displaying message: "${message}" with id: "${id}"`
     );
     if (targetElement) {
-      targetElement.innerHTML = `<div id="${id}">${message}</div>`;
+      targetElement.innerHTML = `<style>${galleryCSS}</style><div id="${id}">${message}</div>`;
     } else {
       console.warn(
         "[UserScript WARN] Target element for displayMessage is null."
@@ -77,20 +128,27 @@
     }
   }
 
-  function injectGallery(galleryHtml, targetElement) {
-    console.log("[UserScript DBG] Attempting to inject gallery HTML.");
+  function injectGallery(galleryContentHtml, targetElement) {
+    console.log(
+      "[UserScript DBG] Attempting to inject gallery HTML with embedded styles."
+    );
+
+    const fullHtmlToInject = `<style>${galleryCSS}</style>${galleryContentHtml}`;
 
     if (
-      galleryHtml &&
-      galleryHtml.trim() !== '<div id="custom-user-uploads-gallery"></div>' &&
-      galleryHtml.includes("custom-gallery-item")
+      galleryContentHtml &&
+      galleryContentHtml.trim() !==
+        '<div id="custom-user-uploads-gallery"></div>' &&
+      galleryContentHtml.includes("custom-gallery-item")
     ) {
       try {
         prompt(
-          "Copy the generated gallery HTML below (Ctrl+C, Cmd+C):",
-          galleryHtml
+          "Copy the generated gallery HTML (styles are embedded, then gallery div) below (Ctrl+C, Cmd+C):",
+          fullHtmlToInject
         );
-        console.log("[UserScript DBG] HTML prompt shown.");
+        console.log(
+          "[UserScript DBG] HTML prompt shown (includes embedded style)."
+        );
       } catch (e) {
         console.warn("[UserScript WARN] Could not display prompt.", e);
       }
@@ -101,9 +159,9 @@
     }
 
     if (targetElement) {
-      targetElement.innerHTML = galleryHtml;
+      targetElement.innerHTML = fullHtmlToInject;
       console.log(
-        "[UserScript DBG] Gallery HTML injected successfully into:",
+        "[UserScript DBG] Gallery HTML with embedded styles injected successfully into:",
         targetElement
       );
     } else {
@@ -111,12 +169,10 @@
         "[UserScript ERR] Target element for gallery injection not found."
       );
       const fallbackContainer = document.createElement("div");
-      fallbackContainer.innerHTML =
-        "<h2>User Uploads (Fallback - Injection Target Missing)</h2>" +
-        galleryHtml;
+      fallbackContainer.innerHTML = `<h2>User Uploads (Fallback - Injection Target Missing)</h2><style>${galleryCSS}</style>${galleryContentHtml}`;
       document.body.appendChild(fallbackContainer);
       console.warn(
-        "[UserScript WARN] Gallery injected into a fallback container in document.body."
+        "[UserScript WARN] Gallery with embedded styles injected into a fallback container in document.body."
       );
     }
   }
@@ -174,11 +230,11 @@
               console.log(
                 `[UserScript DBG] Found ${items.length} items in uploads.`
               );
-              let galleryHtml = '<div id="custom-user-uploads-gallery">';
+              let galleryContentHtml = '<div id="custom-user-uploads-gallery">';
               if (items.length > 0) {
                 items.forEach((item) => {
                   if (item.fields && item.fields.identifier) {
-                    galleryHtml += createGalleryItemHtml(item);
+                    galleryContentHtml += createGalleryItemHtml(item);
                   } else {
                     console.warn(
                       "[UserScript WARN] Item missing fields.identifier:",
@@ -187,8 +243,8 @@
                   }
                 });
               }
-              galleryHtml += "</div>";
-              injectGallery(galleryHtml, targetElement);
+              galleryContentHtml += "</div>";
+              injectGallery(galleryContentHtml, targetElement);
             } else {
               console.error(
                 "[UserScript ERR] Unexpected JSON structure from API (uploads path):",
@@ -313,41 +369,40 @@
       );
       const fallbackDiv = document.createElement("div");
       fallbackDiv.id = "fallback-gallery-container";
-      fallbackDiv.innerHTML = `<div id="gallery-error-message">Could not find the designated spot to place the gallery (.active-tab-content). Displaying here instead.</div>`;
-
-      const mainContentArea = document.querySelector("main") || document.body;
-      const userProfileElement = document
-        .querySelector("app-root")
-        ?.shadowRoot?.querySelector("user-profile");
-      if (userProfileElement) {
-        userProfileElement.insertAdjacentElement("afterend", fallbackDiv);
-        console.log(
-          "[UserScript DBG] Appended fallback container after user-profile element."
-        );
-      } else if (appRoot) {
-        appRoot.insertAdjacentElement("afterend", fallbackDiv);
-        console.log(
-          "[UserScript DBG] Appended fallback container after app-root element."
-        );
-      } else {
-        mainContentArea.appendChild(fallbackDiv);
-        console.log(
-          "[UserScript DBG] Appended fallback container to main content or body."
-        );
-      }
 
       const currentUsername = getUsername();
       if (currentUsername) {
+        const fallbackHtml = `<div id="gallery-error-message">Could not find the designated spot to place the gallery (.active-tab-content). Displaying here instead.</div>`;
+        fallbackDiv.innerHTML = `<style>${galleryCSS}</style>${fallbackHtml}`;
+
+        const mainContentArea = document.querySelector("main") || document.body;
+        const userProfileElement = document
+          .querySelector("app-root")
+          ?.shadowRoot?.querySelector("user-profile");
+        if (userProfileElement) {
+          userProfileElement.insertAdjacentElement("afterend", fallbackDiv);
+          console.log(
+            "[UserScript DBG] Appended fallback container after user-profile element."
+          );
+        } else if (appRoot) {
+          appRoot.insertAdjacentElement("afterend", fallbackDiv);
+          console.log(
+            "[UserScript DBG] Appended fallback container after app-root element."
+          );
+        } else {
+          mainContentArea.appendChild(fallbackDiv);
+          console.log(
+            "[UserScript DBG] Appended fallback container to main content or body."
+          );
+        }
         fetchAndDisplayUploads(currentUsername, fallbackDiv);
       } else {
+        fallbackDiv.innerHTML = `<style>${galleryCSS}</style><div id="gallery-error-message">Could not determine username from URL for fallback.</div>`;
         console.error(
           "[UserScript ERR] Username is null, cannot fetch uploads for fallback."
         );
-        displayMessage(
-          fallbackDiv,
-          "Could not determine username from URL for fallback.",
-          "gallery-error-message"
-        );
+        const mainContentArea = document.querySelector("main") || document.body;
+        mainContentArea.appendChild(fallbackDiv);
       }
       return null;
     }
@@ -376,18 +431,26 @@
     console.error(
       "[UserScript ERR] Could not determine username from URL. Script cannot proceed to fetch uploads."
     );
-
-    let errorDisplayTarget = document.querySelector(".active-tab-content");
-    if (!errorDisplayTarget) {
+    let errorDisplayTarget = null;
+    try {
       const appRoot = document.querySelector("app-root");
       if (appRoot && appRoot.shadowRoot) {
         const userProfile = appRoot.shadowRoot.querySelector("user-profile");
         if (userProfile && userProfile.shadowRoot) {
-          errorDisplayTarget =
+          const tabManager =
             userProfile.shadowRoot.querySelector("tab-manager");
+          if (tabManager && tabManager.shadowRoot) {
+            errorDisplayTarget = tabManager.shadowRoot.querySelector(
+              ".active-tab-content"
+            );
+          }
+          if (!errorDisplayTarget) errorDisplayTarget = tabManager;
         }
       }
+    } catch (e) {
+      console.warn("Error finding target for username error display:", e);
     }
+
     if (errorDisplayTarget) {
       displayMessage(
         errorDisplayTarget,
@@ -395,8 +458,11 @@
         "gallery-error-message"
       );
     } else {
+      const bodyFallbackError = document.createElement("div");
+      bodyFallbackError.innerHTML = `<style>${galleryCSS}</style><div id="gallery-error-message" style="border:2px solid red; padding: 10px; margin: 10px;">Error: Could not determine username from URL to fetch uploads. Also, the script could not find its usual place to display messages.</div>`;
+      document.body.insertAdjacentElement("afterbegin", bodyFallbackError);
       console.warn(
-        "[UserScript WARN] No suitable element found to display initial username error."
+        "[UserScript WARN] No suitable element found to display initial username error. Used body fallback."
       );
     }
   }
