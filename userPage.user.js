@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Archive.org Simple Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  Simple viewer that works with Ctrl+F
 // @author       Franco Drachenberg
 // @match        https://archive.org/details/@*
@@ -13,7 +13,7 @@
   "use strict";
 
   console.log(
-    "[UserScript] Archive.org User Uploads Gallery - Script starting (v1.0)."
+    "[UserScript] Archive.org User Uploads Gallery - Script starting (v1.1)."
   );
 
   const HITS_PER_PAGE = 1000;
@@ -29,6 +29,8 @@
     '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="M81 100 50 77l-31 23 11-37L0 37h38L50 0l12 37h38L70 63z"/></svg>';
   const iconReviews =
     '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="m100 8-2-6-6-2H8L2 2 0 8v51l2 6 6 2h10l1 33 32-33h41l6-2c2-1 2-4 2-6z"/></svg>';
+  const iconSize =
+    '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><path id="c" d="M15 12H8c-4 0-3-4 0-5l4-1 1-4c1-3 5-2 5 0v7c0 3 0 3-3 3z"/><path id="l" d="M65 71H33c-3 0-3-6 0-6h32c3 0 3 6 0 6z"/></defs><use href="#c"/><use href="#c" transform="matrix(-1 0 0 1 98 0)"/><use href="#c" transform="rotate(180 49 49)"/><use href="#c" transform="matrix(1 0 0 -1 0 98)"/><use href="#l"/><use href="#l" transform="translate(0 -12)"/><use href="#l" transform="translate(0 -24)"/><use href="#l" transform="matrix(.6 0 0 1 13 -38)"/><path fill="currentColor" d="M79 84a1 1 0 0 1-1 1H20a1 1 0 0 1-1-1V14a1 1 0 0 1 1-1h58a1 1 0 0 1 1 1v70Zm-5-65a1 1 0 0 0-1-1H25a1 1 0 0 0-1 1v60a1 1 0 0 0 1 1h48a1 1 0 0 0 1-1V19Z"/></svg>';
 
   const galleryCSS = `
         #custom-gallery-wrapper {
@@ -68,9 +70,6 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 15px;
-           
-           
-           
         }
         .custom-gallery-item {
             display: flex;
@@ -119,16 +118,25 @@
             align-items: center;
         }
         .custom-gallery-item-meta.stats-line {
-            justify-content: space-around;
+            justify-content: space-between;
+            flex-wrap: wrap;
             margin-top: 4px;
             padding-top: 4px;
             border-top: 1px dashed #eee;
             color: #555;
         }
-        .custom-gallery-item-meta.stats-line > div { display: flex; align-items: center; }
+        .custom-gallery-item-meta.stats-line > div {
+              display: flex;
+              align-items: center;
+              margin-right: 5px;
+              margin-bottom: 2px;
+          }
+          .custom-gallery-item-meta.stats-line > div:last-child {
+               margin-right: 0;
+          }
         .meta-icon {
             width: 1em; height: 1em;
-            margin-right: 4px;
+            margin-right: 3px;
             vertical-align: middle;
             fill: currentColor;
         }
@@ -167,13 +175,14 @@
     });
     return `https://archive.org/services/search/beta/page_production/?${p.toString()}`;
   }
-  function formatBytes(bytes, decimals = 2) {
-    if (!+bytes) return "0 Bytes";
-    const k = 1024,
-      dm = decimals < 0 ? 0 : decimals,
-      s = ["Bytes", "KB", "MB", "GB", "TB"],
-      i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${s[i]}`;
+  function formatBytes(bytes, decimals = 1) {
+    if (!+bytes) return "0B";
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ["B", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    if (i === 0 && bytes < 100) return `${bytes}${sizes[i]}`;
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))}${sizes[i]}`;
   }
   function formatDate(dateString) {
     if (!dateString) return "N/A";
@@ -196,7 +205,9 @@
 
     const numFavorites = fields.num_favorites || 0;
     const numReviews = fields.num_reviews || 0;
-    const itemSize = fields.item_size ? formatBytes(fields.item_size) : "N/A";
+    const itemSizeFormatted = fields.item_size
+      ? formatBytes(fields.item_size)
+      : "N/A";
     const downloads = fields.downloads || 0;
     const addedDate = formatDate(fields.addeddate || fields.publicdate);
     const creator =
@@ -209,24 +220,24 @@
         : "<i>None</i>";
 
     return `
-            <div class="custom-gallery-item">
-                <a href="${itemUrl}" target="_blank" class="custom-gallery-item-thumbnail-link" title="View ${title} details (thumbnail)">
-                    <img src="${thumbnailUrl}" alt="${title}" loading="lazy">
-                </a>
-                <div class="custom-gallery-item-info">
-                    <a href="${itemUrl}" target="_blank" class="custom-gallery-item-title" title="${title}">${title}</a>
-                    <div class="custom-gallery-item-meta"><strong>Creator:</strong> ${creator}</div>
-                    <div class="custom-gallery-item-meta"><strong>Added:</strong> ${addedDate}</div>
-                    <div class="custom-gallery-item-meta"><strong>Size:</strong> ${itemSize}</div>
-                    <div class="custom-gallery-item-meta stats-line">
-                        <div>${iconDownloads} ${downloads.toLocaleString()}</div>
-                        <div>${iconFavorites} ${numFavorites}</div>
-                        <div>${iconReviews} ${numReviews}</div>
-                    </div>
-                    <div class="custom-gallery-item-subjects">${subjects}</div>
-                </div>
-            </div>
-        `;
+              <div class="custom-gallery-item">
+                  <a href="${itemUrl}" target="_blank" class="custom-gallery-item-thumbnail-link" title="View ${title} details (thumbnail)">
+                      <img src="${thumbnailUrl}" alt="${title}" loading="lazy">
+                  </a>
+                  <div class="custom-gallery-item-info">
+                      <a href="${itemUrl}" target="_blank" class="custom-gallery-item-title" title="${title}">${title}</a>
+                      <div class="custom-gallery-item-meta"><strong>Creator:</strong> ${creator}</div>
+                      <div class="custom-gallery-item-meta"><strong>Added:</strong> ${addedDate}</div>
+                      <div class="custom-gallery-item-meta stats-line">
+                          <div>${iconSize} ${itemSizeFormatted}</div>
+                          <div>${iconDownloads} ${downloads.toLocaleString()}</div>
+                          <div>${iconFavorites} ${numFavorites}</div>
+                          <div>${iconReviews} ${numReviews}</div>
+                      </div>
+                      <div class="custom-gallery-item-subjects">${subjects}</div>
+                  </div>
+              </div>
+          `;
   }
 
   function buildGalleryItemsHtml(itemsToDisplay) {
@@ -238,15 +249,15 @@
 
   function buildSidebarHtml(totalItemsCount, displayedItemsCount) {
     return `
-            <div id="custom-gallery-sidebar">
-                <div id="results-count-area">
-                    Displaying ${displayedItemsCount} of ${totalItemsCount} items
-                </div>
-                <div id="search-input-area">
-                    <input type="text" id="gallery-search-input" placeholder='Search (e.g. word1 word2 or "exact phrase")'>
-                </div>
-            </div>
-        `;
+              <div id="custom-gallery-sidebar">
+                  <div id="results-count-area">
+                      Displaying ${displayedItemsCount} of ${totalItemsCount} items
+                  </div>
+                  <div id="search-input-area">
+                      <input type="text" id="gallery-search-input" placeholder='Search (e.g. word1 word2 or "exact phrase")'>
+                  </div>
+              </div>
+          `;
   }
 
   function displayMessage(targetElement, message, id) {
@@ -353,14 +364,14 @@
     currentTargetElement = targetElement;
     const galleryContainerHtml = `<div id="custom-user-uploads-gallery">${initialGalleryItemsHtml}</div>`;
     const fullHtmlToInject = `
-            <div id="custom-gallery-wrapper">
-                ${initialSidebarHtml}
-                <div id="custom-gallery-main-content">
-                    <style>${galleryCSS}</style>
-                    ${galleryContainerHtml}
-                </div>
-            </div>
-        `;
+              <div id="custom-gallery-wrapper">
+                  ${initialSidebarHtml}
+                  <div id="custom-gallery-main-content">
+                      <style>${galleryCSS}</style>
+                      ${galleryContainerHtml}
+                  </div>
+              </div>
+          `;
 
     if (targetElement) {
       targetElement.innerHTML = fullHtmlToInject;
