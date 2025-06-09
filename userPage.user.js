@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Archive.org Simple Viewer
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  Simple viewer that works with Ctrl+F
 // @author       Franco Drachenberg
 // @match        https://archive.org/details/@*
@@ -80,6 +80,30 @@
 
   function injectGallery(galleryHtml, targetElement) {
     console.log("[UserScript DBG] Attempting to inject gallery HTML.");
+
+    if (
+      galleryHtml &&
+      galleryHtml.trim() !== '<div id="custom-user-uploads-gallery"></div>' &&
+      galleryHtml.includes("custom-gallery-item")
+    ) {
+      try {
+        prompt(
+          "Copy the generated gallery HTML below (Ctrl+C, Cmd+C):",
+          galleryHtml
+        );
+        console.log("[UserScript DBG] HTML prompt shown.");
+      } catch (e) {
+        console.warn(
+          "[UserScript WARN] Could not display prompt. This might happen if the script is run too early or in a restricted context.",
+          e
+        );
+      }
+    } else {
+      console.log(
+        "[UserScript DBG] No substantial gallery HTML to show in prompt (gallery might be empty)."
+      );
+    }
+
     if (targetElement) {
       targetElement.innerHTML = galleryHtml;
       console.log("[UserScript DBG] Gallery HTML injected successfully.");
@@ -141,8 +165,8 @@
               console.log(
                 `[UserScript DBG] Found ${items.length} items in uploads.`
               );
+              let galleryHtml = '<div id="custom-user-uploads-gallery">';
               if (items.length > 0) {
-                let galleryHtml = '<div id="custom-user-uploads-gallery">';
                 items.forEach((item) => {
                   if (item.fields && item.fields.identifier) {
                     galleryHtml += createGalleryItemHtml(item);
@@ -153,15 +177,9 @@
                     );
                   }
                 });
-                galleryHtml += "</div>";
-                injectGallery(galleryHtml, targetElement);
-              } else {
-                displayMessage(
-                  targetElement,
-                  "No uploads found for this user.",
-                  "gallery-error-message"
-                );
               }
+              galleryHtml += "</div>";
+              injectGallery(galleryHtml, targetElement);
             } else {
               console.error(
                 "[UserScript ERR] Unexpected JSON structure from API:",
@@ -317,7 +335,6 @@
 
   if (username) {
     console.log("[UserScript DBG] Username obtained:", username);
-
     const initialTargetElement = findTargetElement();
 
     if (initialTargetElement) {
@@ -334,7 +351,6 @@
     console.error(
       "[UserScript ERR] Could not determine username from URL. Script cannot proceed to fetch uploads."
     );
-
     const appRoot = document.querySelector("app-root");
     if (appRoot && appRoot.shadowRoot) {
       const userProfile = appRoot.shadowRoot.querySelector("user-profile");
