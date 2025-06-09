@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Archive.org Simple Viewer
 // @namespace    http://tampermonkey.net/
-// @version      0.8
+// @version      0.9
 // @description  Simple viewer that works with Ctrl+F
 // @author       Franco Drachenberg
 // @match        https://archive.org/details/@*
@@ -13,7 +13,7 @@
   "use strict";
 
   console.log(
-    "[UserScript] Archive.org User Uploads Gallery - Script starting (v0.8)."
+    "[UserScript] Archive.org User Uploads Gallery - Script starting (v0.9)."
   );
 
   const HITS_PER_PAGE = 1000;
@@ -231,7 +231,7 @@
 
   function buildGalleryItemsHtml(itemsToDisplay) {
     if (!itemsToDisplay || itemsToDisplay.length === 0) {
-      return "<p>No items match your search or no items found.</p>";
+      return '<p style="text-align:center; padding: 20px;">No items match your search criteria.</p>';
     }
     return itemsToDisplay.map((item) => createGalleryItemHtml(item)).join("");
   }
@@ -243,16 +243,13 @@
                     Displaying ${displayedItemsCount} of ${totalItemsCount} items
                 </div>
                 <div id="search-input-area">
-                    <input type="text" id="gallery-search-input" placeholder="Search items...">
+                    <input type="text" id="gallery-search-input" placeholder='Search (e.g. word1 word2 or "exact phrase")'>
                 </div>
             </div>
         `;
   }
 
   function displayMessage(targetElement, message, id) {
-    console.log(
-      `[UserScript DBG] Displaying message: "${message}" with id: "${id}"`
-    );
     if (targetElement) {
       const wrapper = targetElement.querySelector("#custom-gallery-wrapper");
       const mainContent = targetElement.querySelector(
@@ -270,31 +267,64 @@
   function handleSearch(event) {
     if (!currentTargetElement || allFetchedItems.length === 0) return;
 
-    const searchTerm = event.target.value.toLowerCase().trim();
+    const rawSearchInput = event.target.value.toLowerCase().trim();
     let filteredItems = allFetchedItems;
 
-    if (searchTerm) {
-      filteredItems = allFetchedItems.filter((item) => {
-        const fields = item.fields;
-        const title = (fields.title || "").toLowerCase();
-        const identifier = (fields.identifier || "").toLowerCase();
-        const creatorMatch =
-          fields.creator &&
-          fields.creator.some((c) =>
-            (c || "").toLowerCase().includes(searchTerm)
-          );
-        const subjectMatch =
-          fields.subject &&
-          fields.subject.some((s) =>
-            (s || "").toLowerCase().includes(searchTerm)
-          );
-        return (
-          title.includes(searchTerm) ||
-          identifier.includes(searchTerm) ||
-          creatorMatch ||
-          subjectMatch
-        );
-      });
+    if (rawSearchInput) {
+      const isPhraseSearch =
+        rawSearchInput.startsWith('"') &&
+        rawSearchInput.endsWith('"') &&
+        rawSearchInput.length > 2;
+
+      if (isPhraseSearch) {
+        const phrase = rawSearchInput.substring(1, rawSearchInput.length - 1);
+        if (phrase) {
+          filteredItems = allFetchedItems.filter((item) => {
+            const fields = item.fields;
+            const title = (fields.title || "").toLowerCase();
+            const identifier = (fields.identifier || "").toLowerCase();
+            const creatorString = fields.creator
+              ? fields.creator.join(" ").toLowerCase()
+              : "";
+            const subjectString = fields.subject
+              ? fields.subject.join(" ").toLowerCase()
+              : "";
+
+            return (
+              title.includes(phrase) ||
+              identifier.includes(phrase) ||
+              creatorString.includes(phrase) ||
+              subjectString.includes(phrase)
+            );
+          });
+        }
+      } else {
+        const searchWords = rawSearchInput
+          .split(/\s+/)
+          .filter((word) => word.length > 0);
+        if (searchWords.length > 0) {
+          filteredItems = allFetchedItems.filter((item) => {
+            const fields = item.fields;
+            const title = (fields.title || "").toLowerCase();
+            const identifier = (fields.identifier || "").toLowerCase();
+            const creatorArray = fields.creator
+              ? fields.creator.map((c) => (c || "").toLowerCase())
+              : [];
+            const subjectArray = fields.subject
+              ? fields.subject.map((s) => (s || "").toLowerCase())
+              : [];
+
+            return searchWords.every((word) => {
+              return (
+                title.includes(word) ||
+                identifier.includes(word) ||
+                creatorArray.some((c) => c.includes(word)) ||
+                subjectArray.some((s) => s.includes(word))
+              );
+            });
+          });
+        }
+      }
     }
 
     const galleryDiv = currentTargetElement.querySelector(
@@ -311,7 +341,7 @@
       resultsCountEl.textContent = `Displaying ${filteredItems.length} of ${allFetchedItems.length} items`;
     }
     console.log(
-      `[UserScript DBG] Searched for "${searchTerm}", found ${filteredItems.length} items.`
+      `[UserScript DBG] Searched for "${rawSearchInput}", found ${filteredItems.length} items.`
     );
   }
 
@@ -320,11 +350,7 @@
     initialSidebarHtml,
     targetElement
   ) {
-    console.log(
-      "[UserScript DBG] Attempting to inject full layout (sidebar + gallery) with embedded styles."
-    );
     currentTargetElement = targetElement;
-
     const galleryContainerHtml = `<div id="custom-user-uploads-gallery">${initialGalleryItemsHtml}</div>`;
     const fullHtmlToInject = `
             <div id="custom-gallery-wrapper">
@@ -345,7 +371,6 @@
           "Copy the generated layout HTML (styles embedded) below (Ctrl+C, Cmd+C):",
           fullHtmlToInject
         );
-        console.log("[UserScript DBG] HTML prompt shown.");
       } catch (e) {
         console.warn("[UserScript WARN] Could not display prompt.", e);
       }
@@ -353,25 +378,18 @@
 
     if (targetElement) {
       targetElement.innerHTML = fullHtmlToInject;
-      console.log(
-        "[UserScript DBG] Full layout with embedded styles injected successfully into:",
-        targetElement
-      );
-
       const searchInput = targetElement.querySelector("#gallery-search-input");
       if (searchInput) {
         searchInput.addEventListener("input", handleSearch);
-        console.log("[UserScript DBG] Search input event listener attached.");
       } else {
         console.warn(
-          "[UserScript WARN] Search input not found after injection to attach listener."
+          "[UserScript WARN] Search input not found after injection."
         );
       }
     } else {
       console.error(
         "[UserScript ERR] Target element for layout injection not found."
       );
-
       const fallbackContainer = document.createElement("div");
       fallbackContainer.innerHTML =
         `<h2>User Uploads (Fallback)</h2>` + fullHtmlToInject;
@@ -381,45 +399,27 @@
 
   function fetchAndDisplayUploads(username, targetElement) {
     const apiUrl = buildApiUrl(username);
-    console.log("[UserScript DBG] Fetching uploads for username:", username);
-
     targetElement.innerHTML = `<style>${galleryCSS}</style><div id="gallery-loading-message">Loading user uploads...</div>`;
 
     GM_xmlhttpRequest({
       method: "GET",
       url: apiUrl,
       onload: function (response) {
-        console.log(
-          "[UserScript DBG] API request onload triggered. Status:",
-          response.status
-        );
         if (response.status >= 200 && response.status < 300) {
           try {
             const jsonData = JSON.parse(response.responseText);
-            if (
-              jsonData &&
-              jsonData.response &&
-              jsonData.response.body &&
-              jsonData.response.body.page_elements &&
-              jsonData.response.body.page_elements.uploads &&
-              jsonData.response.body.page_elements.uploads.hits &&
-              Array.isArray(
-                jsonData.response.body.page_elements.uploads.hits.hits
-              )
-            ) {
+            if (jsonData?.response?.body?.page_elements?.uploads?.hits?.hits) {
               allFetchedItems =
                 jsonData.response.body.page_elements.uploads.hits.hits;
               console.log(
                 `[UserScript DBG] Found ${allFetchedItems.length} total items.`
               );
-
               const initialSidebarHtml = buildSidebarHtml(
                 allFetchedItems.length,
                 allFetchedItems.length
               );
               const initialGalleryItemsHtml =
                 buildGalleryItemsHtml(allFetchedItems);
-
               injectLayoutAndGallery(
                 initialGalleryItemsHtml,
                 initialSidebarHtml,
@@ -427,12 +427,12 @@
               );
             } else {
               console.error(
-                "[UserScript ERR] Unexpected JSON structure from API (uploads path):",
+                "[UserScript ERR] Unexpected JSON structure:",
                 jsonData
               );
               displayMessage(
                 targetElement,
-                "Error: Could not parse uploads from API. Unexpected structure.",
+                "Error: API response structure is not as expected.",
                 "gallery-error-message"
               );
             }
@@ -457,10 +457,7 @@
         }
       },
       onerror: function (error) {
-        console.error(
-          "[UserScript ERR] API request GM_xmlhttpRequest error:",
-          error
-        );
+        console.error("[UserScript ERR] API request error:", error);
         displayMessage(
           targetElement,
           "Error: Network error while fetching uploads.",
@@ -471,30 +468,20 @@
   }
 
   function findTargetElement(retriesLeft = MAX_RETRIES) {
-    console.log(
-      `[UserScript DBG] Attempting to find target element. Retries left: ${retriesLeft}`
-    );
-    const appRoot = document.querySelector("app-root");
-    if (appRoot && appRoot.shadowRoot) {
-      const userProfile = appRoot.shadowRoot.querySelector("user-profile");
-      if (userProfile && userProfile.shadowRoot) {
-        const tabManager = userProfile.shadowRoot.querySelector("tab-manager");
-        if (tabManager && tabManager.shadowRoot) {
-          const activeTabContent = tabManager.shadowRoot.querySelector(
-            ".active-tab-content"
-          );
-          if (activeTabContent) {
-            console.log(
-              "[UserScript DBG] Target element (.active-tab-content) found successfully!"
-            );
-            return activeTabContent;
-          }
-        }
-      }
+    const appRoot = document
+      .querySelector("app-root")
+      ?.shadowRoot?.querySelector("user-profile")
+      ?.shadowRoot?.querySelector("tab-manager")
+      ?.shadowRoot?.querySelector(".active-tab-content");
+    if (appRoot) {
+      console.log(
+        "[UserScript DBG] Target element (.active-tab-content) found!"
+      );
+      return appRoot;
     }
     if (retriesLeft > 0) {
       console.log(
-        `[UserScript DBG] Target element not found, ${
+        `[UserScript DBG] Target not found, ${
           retriesLeft - 1
         } retries left. Trying again...`
       );
@@ -507,7 +494,7 @@
           } else {
             displayMessage(
               foundElement,
-              "Error: Username not found during retry.",
+              "Error: Username became null during retry.",
               "gallery-error-message"
             );
           }
@@ -518,21 +505,17 @@
       console.error(
         "[UserScript ERR] Failed to find .active-tab-content after retries."
       );
-
       const fallbackDiv = document.createElement("div");
       document.body.insertAdjacentElement("afterbegin", fallbackDiv);
       displayMessage(
         fallbackDiv,
-        "Critical Error: Script could not find its designated injection point on the page after multiple attempts. Gallery cannot be displayed.",
+        "Critical Error: Script could not find its injection point.",
         "gallery-error-message"
       );
       return null;
     }
   }
 
-  console.log(
-    "[UserScript] Archive.org User Uploads Gallery - Main execution started."
-  );
   const username = getUsername();
   if (username) {
     const initialTargetElement = findTargetElement();
@@ -540,26 +523,27 @@
       fetchAndDisplayUploads(username, initialTargetElement);
     } else {
       console.log(
-        "[UserScript DBG] Target element not found on first try. Retries or fallback initiated by findTargetElement."
+        "[UserScript DBG] Target not found on first try. Retries or fallback initiated."
       );
     }
   } else {
-    console.error("[UserScript ERR] Could not determine username from URL.");
-
+    console.error("[UserScript ERR] No username found.");
     let errorDisplayTarget = document.body;
     try {
-      const appRoot = document
+      const target = document
         .querySelector("app-root")
         ?.shadowRoot?.querySelector("user-profile")
         ?.shadowRoot?.querySelector("tab-manager")
         ?.shadowRoot?.querySelector(".active-tab-content");
-      if (appRoot) errorDisplayTarget = appRoot;
+      if (target) errorDisplayTarget = target;
     } catch (e) {}
     const tempDiv = document.createElement("div");
-    errorDisplayTarget.prepend(tempDiv);
+    errorDisplayTarget === document.body
+      ? document.body.insertAdjacentElement("afterbegin", tempDiv)
+      : errorDisplayTarget.prepend(tempDiv);
     displayMessage(
       tempDiv,
-      "Error: Could not determine username from URL to fetch uploads.",
+      "Error: Could not get username from URL.",
       "gallery-error-message"
     );
   }
