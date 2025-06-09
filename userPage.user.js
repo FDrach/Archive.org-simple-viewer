@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Archive.org Simple Viewer
 // @namespace    http://tampermonkey.net/
-// @version      0.9
+// @version      1.0
 // @description  Simple viewer that works with Ctrl+F
 // @author       Franco Drachenberg
 // @match        https://archive.org/details/@*
@@ -13,7 +13,7 @@
   "use strict";
 
   console.log(
-    "[UserScript] Archive.org User Uploads Gallery - Script starting (v0.9)."
+    "[UserScript] Archive.org User Uploads Gallery - Script starting (v1.0)."
   );
 
   const HITS_PER_PAGE = 1000;
@@ -361,20 +361,6 @@
                 </div>
             </div>
         `;
-
-    if (
-      initialGalleryItemsHtml &&
-      initialGalleryItemsHtml.includes("custom-gallery-item")
-    ) {
-      try {
-        prompt(
-          "Copy the generated layout HTML (styles embedded) below (Ctrl+C, Cmd+C):",
-          fullHtmlToInject
-        );
-      } catch (e) {
-        console.warn("[UserScript WARN] Could not display prompt.", e);
-      }
-    }
 
     if (targetElement) {
       targetElement.innerHTML = fullHtmlToInject;
