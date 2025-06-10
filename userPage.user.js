@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Archive.org Simple Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.3
+// @version      1.4
 // @description  Simple viewer that works with Ctrl+F
 // @author       Franco Drachenberg
 // @match        https://archive.org/details/@*
@@ -14,7 +14,7 @@
   "use strict";
 
   console.log(
-    "[UserScript] Archive.org User Uploads Gallery - Script starting (v1.3)."
+    "[UserScript] Archive.org User Uploads Gallery - Script starting (v1.4)."
   );
 
   const HITS_PER_PAGE = 250;
@@ -37,163 +37,163 @@
     edit: '<svg class="edit-icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="m49 25 28 35H60v31H39V60H22ZM91 8v10H8V8Z"/></svg>',
   };
   const galleryCSS = `
-        #custom-gallery-wrapper {
-            display: flex;
-            gap: 15px;
-            margin-top: 10px;
-        }
-        #custom-gallery-sidebar {
-            width: 200px;
-            padding: 15px;
-            background-color: #f0f0f0;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-            flex-shrink: 0;
-            height: fit-content;
-            position: sticky;
-            top: 10px;
-        }
-        #results-count-area {
-            font-size: 0.9em;
-            color: #333;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
-        #search-input-area input[type="text"] {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 0.9em;
-        }
-        #custom-gallery-main-content {
-            flex-grow: 1;
-        }
-        #custom-user-uploads-gallery {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 15px;
-        }
-        .custom-gallery-item {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            text-decoration: none;
-            color: #333;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            overflow: visible;
-            background-color: #fff;
-            transition: box-shadow 0.2s ease-in-out;
-        }
-        .custom-gallery-item-edit-link {
-          position: absolute;
-          top: 5px;
-          right: 5px;
-          z-index: 10;
-          background-color: rgba(255, 255, 255, 0.8);
-          border-radius: 50%;
-          padding: 3px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 20px;
-          height: 20px;
-          border: 1px solid #ccc;
-          opacity: 0.7;
-          transition: opacity 0.2s;
-        }
-        .custom-gallery-item-edit-link:hover {
-          opacity: 1;
-          background-color: white;
-        }
-        .custom-gallery-item-edit-link .edit-icon-svg {
-          width: 14px;
-          height: 14px;
-        }
-        .custom-gallery-item:hover {
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            border-color: #aaa;
-        }
-        .custom-gallery-item-thumbnail-link {
-          display: block;
-        }
-        .custom-gallery-item img {
-            width: 100%;
-            height: 120px;
-            object-fit: cover;
-            border-bottom: 1px solid #eee;
-        }
-        .custom-gallery-item-info {
-            padding: 8px;
-            font-size: 0.8em;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        .custom-gallery-item-title {
-            font-size: 1.1em;
-            font-weight: bold;
-            margin-bottom: 5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            color: #1a0dab;
-        }
-        .custom-gallery-item-title:hover {
-            text-decoration: underline;
-        }
-        .custom-gallery-item-meta {
-            margin-bottom: 3px;
-            display: flex;
-            align-items: center;
-        }
-        .custom-gallery-item-meta.stats-line {
-            justify-content: space-between;
-            flex-wrap: wrap;
-            margin-top: 4px;
-            padding-top: 4px;
-            border-top: 1px dashed #eee;
-            color: #555;
-        }
-        .custom-gallery-item-meta.stats-line > div {
-              display: flex;
-              align-items: center;
-              margin-right: 5px;
-              margin-bottom: 2px;
-          }
-          .custom-gallery-item-meta.stats-line > div:last-child {
-               margin-right: 0;
-          }
-        .meta-icon {
-          width: 1em;
-          height: 1em;
-          margin-right: 3px;
-          vertical-align: middle;
-          fill: currentColor;
-        }
-        .custom-gallery-item-meta strong {
-          color: #555;
-          margin-right: 4px;
-        }
-        .custom-gallery-item-subjects {
-            margin-top: 4px;
-            font-style: italic;
-            color: #666;
-            max-height: 3.6em;
-            overflow-y: auto;
-            word-break: break-word;
-            line-height: 1.2em;
-        }
-        #gallery-loading-message,
-        #gallery-error-message {
-            font-size: 1.2em;
-            padding: 20px;
-            text-align: center;
-            color: #555;
-            width: 100%;
-        }
+    #custom-gallery-wrapper {
+      display: flex;
+      gap: 15px;
+      margin-top: 10px;
+    }
+    #custom-gallery-sidebar {
+      width: 200px;
+      padding: 15px;
+      background-color: #f0f0f0;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+      flex-shrink: 0;
+      height: fit-content;
+      position: sticky;
+      top: 10px;
+    }
+    #results-count-area {
+      font-size: 0.9em;
+      color: #333;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    #search-input-area input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 0.9em;
+    }
+    #custom-gallery-main-content {
+      flex-grow: 1;
+    }
+    #custom-user-uploads-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+    }
+    .custom-gallery-item {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      text-decoration: none;
+      color: #333;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      overflow: visible;
+      background-color: #fff;
+      transition: box-shadow 0.2s ease-in-out;
+    }
+    .custom-gallery-item-edit-link {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      z-index: 10;
+      background-color: rgba(255, 255, 255, 0.8);
+      border-radius: 50%;
+      padding: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border: 1px solid #ccc;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    .custom-gallery-item-edit-link:hover {
+      opacity: 1;
+      background-color: white;
+    }
+    .custom-gallery-item-edit-link .edit-icon-svg {
+      width: 14px;
+      height: 14px;
+    }
+    .custom-gallery-item:hover {
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border-color: #aaa;
+    }
+    .custom-gallery-item-thumbnail-link {
+      display: block;
+    }
+    .custom-gallery-item img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      border-bottom: 1px solid #eee;
+    }
+    .custom-gallery-item-info {
+      padding: 8px;
+      font-size: 0.8em;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .custom-gallery-item-title {
+      font-size: 1.1em;
+      font-weight: bold;
+      margin-bottom: 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #1a0dab;
+    }
+    .custom-gallery-item-title:hover {
+      text-decoration: underline;
+    }
+    .custom-gallery-item-meta {
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+    }
+    .custom-gallery-item-meta.stats-line {
+      justify-content: space-between;
+      flex-wrap: wrap;
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px dashed #eee;
+      color: #555;
+    }
+    .custom-gallery-item-meta.stats-line > div {
+      display: flex;
+      align-items: center;
+      margin-right: 5px;
+      margin-bottom: 2px;
+    }
+    .custom-gallery-item-meta.stats-line > div:last-child {
+      margin-right: 0;
+    }
+    .meta-icon {
+      width: 1em;
+      height: 1em;
+      margin-right: 3px;
+      vertical-align: middle;
+      fill: currentColor;
+    }
+    .custom-gallery-item-meta strong {
+      color: #555;
+      margin-right: 4px;
+    }
+    .custom-gallery-item-subjects {
+      margin-top: 4px;
+      font-style: italic;
+      color: #666;
+      max-height: 3.6em;
+      overflow-y: auto;
+      word-break: break-word;
+      line-height: 1.2em;
+    }
+    #gallery-loading-message,
+    #gallery-error-message {
+      font-size: 1.2em;
+      padding: 20px;
+      text-align: center;
+      color: #555;
+      width: 100%;
+    }
     `;
 
   function getUsername() {
@@ -261,7 +261,9 @@
                       <div class="custom-gallery-item-meta"><strong>Added:</strong> ${addedDate}</div>
                       <div class="custom-gallery-item-meta stats-line">
                           <div>${icons.size} ${itemSizeFormatted}</div>
-                          <div>${icons.downloads} ${downloads.toLocaleString()}</div>
+                          <div>${
+                            icons.downloads
+                          } ${downloads.toLocaleString()}</div>
                           <div>${icons.favorites} ${numFavorites}</div>
                           <div>${icons.reviews} ${numReviews}</div>
                       </div>
