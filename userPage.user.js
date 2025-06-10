@@ -24,13 +24,14 @@
   let currentTargetElement = null;
 
   const iconDownloads =
-    '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="M98 51a235 235 0 0 0-10-14 83 83 0 0 0-16-13l-10-5a37 37 0 0 0-24 0l-10 5A83 83 0 0 0 3 49l-1 2a235 235 0 0 0 10 13 83 83 0 0 0 16 13l10 5a38 38 0 0 0 24 0l10-5 9-6 7-7c3-2 4-5 5-7l4-5zm-25 0c0 6-2 12-6 16s-11 7-17 7c-7 0-12-2-17-7s-7-10-7-16 3-12 7-17 10-7 17-7c6 0 12 2 17 7s6 10 6 17zM50 40c3 0 5 1 7 3a10 10 0 0 1 0 15c-2 2-4 3-7 3s-5-1-7-3-3-5-3-7c0-3 1-6 3-8s4-3 7-3z"/></svg>';
+    '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="M98 51C71 6 30 5 2 51c28 44 66 45 96 0zm-25 0c0 31-47 30-47 0 0-32 47-31 47 0zM50 40c14 0 14 21 0 21s-14-21 0-21z"/></svg>';
   const iconFavorites =
     '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="M81 100 50 77l-31 23 11-37L0 37h38L50 0l12 37h38L70 63z"/></svg>';
   const iconReviews =
     '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="m100 8-2-6-6-2H8L2 2 0 8v51l2 6 6 2h10l1 33 32-33h41l6-2c2-1 2-4 2-6z"/></svg>';
   const iconSize =
-    '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><path id="c" d="M15 12H8c-4 0-3-4 0-5l4-1 1-4c1-3 5-2 5 0v7c0 3 0 3-3 3z"/><path id="l" d="M65 71H33c-3 0-3-6 0-6h32c3 0 3 6 0 6z"/></defs><use href="#c"/><use href="#c" transform="matrix(-1 0 0 1 98 0)"/><use href="#c" transform="rotate(180 49 49)"/><use href="#c" transform="matrix(1 0 0 -1 0 98)"/><use href="#l"/><use href="#l" transform="translate(0 -12)"/><use href="#l" transform="translate(0 -24)"/><use href="#l" transform="matrix(.6 0 0 1 13 -38)"/><path fill="currentColor" d="M79 84a1 1 0 0 1-1 1H20a1 1 0 0 1-1-1V14a1 1 0 0 1 1-1h58a1 1 0 0 1 1 1v70Zm-5-65a1 1 0 0 0-1-1H25a1 1 0 0 0-1 1v60a1 1 0 0 0 1 1h48a1 1 0 0 0 1-1V19Z"/></svg>';
+    '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path id="c" d="M15 12H8c-4 0-3-4 0-5l4-1 1-4c1-3 5-2 5 0v7c0 3 0 3-3 3z"/><path id="l" d="M65 71H33c-3 0-3-6 0-6h32c3 0 3 6 0 6z"/><use href="#c" transform="matrix(-1 0 0 1 98 0)"/><use href="#c" transform="rotate(180 49 49)"/><use href="#c" transform="matrix(1 0 0 -1 0 98)"/><use href="#l" transform="translate(0 -12)"/><use href="#l" transform="translate(0 -24)"/><use href="#l" transform="matrix(.6 0 0 1 13 -38)"/><path fill="currentColor" d="M79 84a1 1 0 0 1-1 1H20a1 1 0 0 1-1-1V14a1 1 0 0 1 1-1h58a1 1 0 0 1 1 1v70Zm-5-65a1 1 0 0 0-1-1H25a1 1 0 0 0-1 1v60a1 1 0 0 0 1 1h48a1 1 0 0 0 1-1V19Z"/></svg>';
+
 
   const galleryCSS = `
         #custom-gallery-wrapper {
