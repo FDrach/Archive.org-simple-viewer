@@ -7,6 +7,7 @@
 // @match        https://archive.org/details/@*
 // @grant        GM_xmlhttpRequest
 // @connect      archive.org
+// @downloadURL  https://github.com/FDrach/Archive.org-simple-viewer/raw/refs/heads/master/userPage.user.js
 // ==/UserScript==
 
 (function () {
