@@ -22,17 +22,15 @@
 
   let allFetchedItems = [];
   let currentTargetElement = null;
-
-  const iconDownloads =
-    '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="M98 51C71 6 30 5 2 51c28 44 66 45 96 0zm-25 0c0 31-47 30-47 0 0-32 47-31 47 0zM50 40c14 0 14 21 0 21s-14-21 0-21z"/></svg>';
-  const iconFavorites =
-    '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="M81 100 50 77l-31 23 11-37L0 37h38L50 0l12 37h38L70 63z"/></svg>';
-  const iconReviews =
-    '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="m100 8-2-6-6-2H8L2 2 0 8v51l2 6 6 2h10l1 33 32-33h41l6-2c2-1 2-4 2-6z"/></svg>';
-  const iconSize =
-    '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path id="c" d="M15 12H8c-4 0-3-4 0-5l4-1 1-4c1-3 5-2 5 0v7c0 3 0 3-3 3z"/><path id="l" d="M65 71H33c-3 0-3-6 0-6h32c3 0 3 6 0 6z"/><use href="#c" transform="matrix(-1 0 0 1 98 0)"/><use href="#c" transform="rotate(180 49 49)"/><use href="#c" transform="matrix(1 0 0 -1 0 98)"/><use href="#l" transform="translate(0 -12)"/><use href="#l" transform="translate(0 -24)"/><use href="#l" transform="matrix(.6 0 0 1 13 -38)"/><path fill="currentColor" d="M79 84a1 1 0 0 1-1 1H20a1 1 0 0 1-1-1V14a1 1 0 0 1 1-1h58a1 1 0 0 1 1 1v70Zm-5-65a1 1 0 0 0-1-1H25a1 1 0 0 0-1 1v60a1 1 0 0 0 1 1h48a1 1 0 0 0 1-1V19Z"/></svg>';
-
-
+  const icons = {
+    downloads:
+      '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="M98 51C71 6 30 5 2 51c28 44 66 45 96 0zm-25 0c0 31-47 30-47 0 0-32 47-31 47 0zM50 40c14 0 14 21 0 21s-14-21 0-21z"/></svg>',
+    favorites:
+      '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="M81 100 50 77l-31 23 11-37L0 37h38L50 0l12 37h38L70 63z"/></svg>',
+    reviews:
+      '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="m100 8-2-6-6-2H8L2 2 0 8v51l2 6 6 2h10l1 33 32-33h41l6-2c2-1 2-4 2-6z"/></svg>',
+    size: '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path id="c" d="M15 12H8c-4 0-3-4 0-5l4-1 1-4c1-3 5-2 5 0v7c0 3 0 3-3 3z"/><path id="l" d="M65 71H33c-3 0-3-6 0-6h32c3 0 3 6 0 6z"/><use href="#c" transform="matrix(-1 0 0 1 98 0)"/><use href="#c" transform="rotate(180 49 49)"/><use href="#c" transform="matrix(1 0 0 -1 0 98)"/><use href="#l" transform="translate(0 -12)"/><use href="#l" transform="translate(0 -24)"/><use href="#l" transform="matrix(.6 0 0 1 13 -38)"/><path fill="currentColor" d="M79 84a1 1 0 0 1-1 1H20a1 1 0 0 1-1-1V14a1 1 0 0 1 1-1h58a1 1 0 0 1 1 1v70Zm-5-65a1 1 0 0 0-1-1H25a1 1 0 0 0-1 1v60a1 1 0 0 0 1 1h48a1 1 0 0 0 1-1V19Z"/></svg>'
+  };
   const galleryCSS = `
         #custom-gallery-wrapper {
             display: flex;
@@ -218,10 +216,10 @@
                       <div class="custom-gallery-item-meta"><strong>Creator:</strong> ${creator}</div>
                       <div class="custom-gallery-item-meta"><strong>Added:</strong> ${addedDate}</div>
                       <div class="custom-gallery-item-meta stats-line">
-                          <div>${iconSize} ${itemSizeFormatted}</div>
-                          <div>${iconDownloads} ${downloads.toLocaleString()}</div>
-                          <div>${iconFavorites} ${numFavorites}</div>
-                          <div>${iconReviews} ${numReviews}</div>
+                          <div>${icons.size} ${itemSizeFormatted}</div>
+                          <div>${icons.downloads} ${downloads.toLocaleString()}</div>
+                          <div>${icons.favorites} ${numFavorites}</div>
+                          <div>${icons.reviews} ${numReviews}</div>
                       </div>
                       <div class="custom-gallery-item-subjects">${subjects}</div>
                   </div>
