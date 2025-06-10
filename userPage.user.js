@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Archive.org Simple Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.2
+// @version      1.3
 // @description  Simple viewer that works with Ctrl+F
 // @author       Franco Drachenberg
 // @match        https://archive.org/details/@*
@@ -13,7 +13,7 @@
   "use strict";
 
   console.log(
-    "[UserScript] Archive.org User Uploads Gallery - Script starting (v1.2)."
+    "[UserScript] Archive.org User Uploads Gallery - Script starting (v1.3)."
   );
 
   const HITS_PER_PAGE = 250;
@@ -22,6 +22,8 @@
 
   let allFetchedItems = [];
   let currentTargetElement = null;
+  let globalIsPageTargetOwner = false;
+
   const icons = {
     downloads:
       '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="M98 51C71 6 30 5 2 51c28 44 66 45 96 0zm-25 0c0 31-47 30-47 0 0-32 47-31 47 0zM50 40c14 0 14 21 0 21s-14-21 0-21z"/></svg>',
@@ -29,7 +31,9 @@
       '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="M81 100 50 77l-31 23 11-37L0 37h38L50 0l12 37h38L70 63z"/></svg>',
     reviews:
       '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="m100 8-2-6-6-2H8L2 2 0 8v51l2 6 6 2h10l1 33 32-33h41l6-2c2-1 2-4 2-6z"/></svg>',
-    size: '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path id="c" d="M15 12H8c-4 0-3-4 0-5l4-1 1-4c1-3 5-2 5 0v7c0 3 0 3-3 3z"/><path id="l" d="M65 71H33c-3 0-3-6 0-6h32c3 0 3 6 0 6z"/><use href="#c" transform="matrix(-1 0 0 1 98 0)"/><use href="#c" transform="rotate(180 49 49)"/><use href="#c" transform="matrix(1 0 0 -1 0 98)"/><use href="#l" transform="translate(0 -12)"/><use href="#l" transform="translate(0 -24)"/><use href="#l" transform="matrix(.6 0 0 1 13 -38)"/><path fill="currentColor" d="M79 84a1 1 0 0 1-1 1H20a1 1 0 0 1-1-1V14a1 1 0 0 1 1-1h58a1 1 0 0 1 1 1v70Zm-5-65a1 1 0 0 0-1-1H25a1 1 0 0 0-1 1v60a1 1 0 0 0 1 1h48a1 1 0 0 0 1-1V19Z"/></svg>'
+    size: '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path id="c" d="M15 12H8c-4 0-3-4 0-5l4-1 1-4c1-3 5-2 5 0v7c0 3 0 3-3 3z"/><path id="l" d="M65 71H33c-3 0-3-6 0-6h32c3 0 3 6 0 6z"/><use href="#c" transform="matrix(-1 0 0 1 98 0)"/><use href="#c" transform="rotate(180 49 49)"/><use href="#c" transform="matrix(1 0 0 -1 0 98)"/><use href="#l" transform="translate(0 -12)"/><use href="#l" transform="translate(0 -24)"/><use href="#l" transform="matrix(.6 0 0 1 13 -38)"/><path fill="currentColor" d="M79 84a1 1 0 0 1-1 1H20a1 1 0 0 1-1-1V14a1 1 0 0 1 1-1h58a1 1 0 0 1 1 1v70Zm-5-65a1 1 0 0 0-1-1H25a1 1 0 0 0-1 1v60a1 1 0 0 0 1 1h48a1 1 0 0 0 1-1V19Z"/></svg>',
+
+    edit: '<svg class="edit-icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="m49 25 28 35H60v31H39V60H22ZM91 8v10H8V8Z"/></svg>',
   };
   const galleryCSS = `
         #custom-gallery-wrapper {
@@ -71,21 +75,49 @@
             gap: 15px;
         }
         .custom-gallery-item {
+            position: relative;
             display: flex;
             flex-direction: column;
             text-decoration: none;
             color: #333;
             border: 1px solid #ccc;
             border-radius: 4px;
-            overflow: hidden;
+            overflow: visible;
             background-color: #fff;
             transition: box-shadow 0.2s ease-in-out;
+        }
+        .custom-gallery-item-edit-link {
+          position: absolute;
+          top: 5px;
+          right: 5px;
+          z-index: 10;
+          background-color: rgba(255, 255, 255, 0.8);
+          border-radius: 50%;
+          padding: 3px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 20px;
+          height: 20px;
+          border: 1px solid #ccc;
+          opacity: 0.7;
+          transition: opacity 0.2s;
+        }
+        .custom-gallery-item-edit-link:hover {
+          opacity: 1;
+          background-color: white;
+        }
+        .custom-gallery-item-edit-link .edit-icon-svg {
+          width: 14px;
+          height: 14px;
         }
         .custom-gallery-item:hover {
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             border-color: #aaa;
         }
-        .custom-gallery-item-thumbnail-link { display: block; }
+        .custom-gallery-item-thumbnail-link {
+          display: block;
+        }
         .custom-gallery-item img {
             width: 100%;
             height: 120px;
@@ -134,12 +166,16 @@
                margin-right: 0;
           }
         .meta-icon {
-            width: 1em; height: 1em;
-            margin-right: 3px;
-            vertical-align: middle;
-            fill: currentColor;
+          width: 1em;
+          height: 1em;
+          margin-right: 3px;
+          vertical-align: middle;
+          fill: currentColor;
         }
-        .custom-gallery-item-meta strong { color: #555; margin-right: 4px; }
+        .custom-gallery-item-meta strong {
+          color: #555;
+          margin-right: 4px;
+        }
         .custom-gallery-item-subjects {
             margin-top: 4px;
             font-style: italic;
@@ -149,7 +185,8 @@
             word-break: break-word;
             line-height: 1.2em;
         }
-        #gallery-loading-message, #gallery-error-message {
+        #gallery-loading-message,
+        #gallery-error-message {
             font-size: 1.2em;
             padding: 20px;
             text-align: center;
@@ -189,6 +226,7 @@
     const title = fields.title || identifier;
     const thumbnailUrl = `https://archive.org/services/img/${identifier}`;
     const itemUrl = `https://archive.org/details/${identifier}`;
+    const editUrl = `https://archive.org/upload/?identifier=${identifier}`;
 
     const numFavorites = fields.num_favorites || 0;
     const numReviews = fields.num_reviews || 0;
@@ -206,8 +244,13 @@
         ? fields.subject.join(", ")
         : "<i>None</i>";
 
+    const editIconHtml = globalIsPageTargetOwner
+      ? `<a href="${editUrl}" target="_blank" class="custom-gallery-item-edit-link" title="Upload to '${identifier}'">${icons.edit}</a>`
+      : "";
+
     return `
               <div class="custom-gallery-item">
+                ${editIconHtml}
                   <a href="${itemUrl}" target="_blank" class="custom-gallery-item-thumbnail-link" title="View ${title} details (thumbnail)">
                       <img src="${thumbnailUrl}" alt="${title}" loading="lazy">
                   </a>
@@ -228,23 +271,12 @@
   }
 
   function buildGalleryItemsHtml(itemsToDisplay) {
-    if (!itemsToDisplay || itemsToDisplay.length === 0) {
-      return '<p style="text-align:center; padding: 20px;">No items match your search criteria.</p>';
-    }
-    return itemsToDisplay.map((item) => createGalleryItemHtml(item)).join("");
+    return itemsToDisplay.length === 0
+      ? '<p style="text-align:center; padding: 20px;">No items match your search criteria.</p>'
+      : itemsToDisplay.map((item) => createGalleryItemHtml(item)).join("");
   }
-
   function buildSidebarHtml(totalItemsCount, displayedItemsCount) {
-    return `
-              <div id="custom-gallery-sidebar">
-                  <div id="results-count-area">
-                      Displaying ${displayedItemsCount} of ${totalItemsCount} items
-                  </div>
-                  <div id="search-input-area">
-                      <input type="text" id="gallery-search-input" placeholder='Search (e.g. word1 word2 or "exact phrase")'>
-                  </div>
-              </div>
-          `;
+    return `<div id="custom-gallery-sidebar"><div id="results-count-area">Displaying ${displayedItemsCount} of ${totalItemsCount} items</div><div id="search-input-area"><input type="text" id="gallery-search-input" placeholder='Search (e.g. word1 word2 or "exact phrase")'></div></div>`;
   }
 
   function updateLoadingMessage(targetEl, message) {
@@ -352,16 +384,7 @@
   ) {
     currentTargetElement = targetElement;
     const galleryContainerHtml = `<div id="custom-user-uploads-gallery">${initialGalleryItemsHtml}</div>`;
-    const fullHtmlToInject = `
-              <div id="custom-gallery-wrapper">
-                  ${initialSidebarHtml}
-                  <div id="custom-gallery-main-content">
-                      <style>${galleryCSS}</style>
-                      ${galleryContainerHtml}
-                  </div>
-              </div>
-          `;
-
+    const fullHtmlToInject = `<div id="custom-gallery-wrapper">${initialSidebarHtml}<div id="custom-gallery-main-content"><style>${galleryCSS}</style>${galleryContainerHtml}</div></div>`;
     if (targetElement) {
       targetElement.innerHTML = fullHtmlToInject;
       const searchInput = targetElement.querySelector("#gallery-search-input");
@@ -381,21 +404,23 @@
     }
   }
 
-  function fetchPageData(username, pageNumber) {
+  function fetchPageData(username, pageNumber, isContextFetch = false) {
     return new Promise((resolve, reject) => {
       const params = new URLSearchParams({
         user_query: "",
         page_type: "account_details",
         page_target: `@${username}`,
         page_elements: '["uploads"]',
-        hits_per_page: HITS_PER_PAGE.toString(),
+        hits_per_page: isContextFetch ? "1" : HITS_PER_PAGE.toString(),
         page: pageNumber.toString(),
         sort: "publicdate:desc",
         aggregations: "false",
       });
       const apiUrl = `https://archive.org/services/search/beta/page_production/?${params.toString()}`;
       console.log(
-        `[UserScript DBG] Fetching page ${pageNumber} from: ${apiUrl}`
+        `[UserScript DBG] Fetching ${
+          isContextFetch ? "context" : `page ${pageNumber}`
+        } from: ${apiUrl}`
       );
 
       GM_xmlhttpRequest({
@@ -405,6 +430,12 @@
           if (response.status >= 200 && response.status < 300) {
             try {
               const jsonData = JSON.parse(response.responseText);
+              if (isContextFetch) {
+                const isOwner =
+                  jsonData?.session_context?.pps?.is_page_target_owner === true;
+                resolve({ isOwner });
+                return;
+              }
               const hitsNode =
                 jsonData?.response?.body?.page_elements?.uploads?.hits;
               if (hitsNode) {
@@ -412,52 +443,33 @@
                 const totalHits = pageNumber === 1 ? hitsNode.total : null;
                 resolve({ items, totalHits });
               } else {
-                console.error(
-                  "[UserScript ERR] Unexpected JSON structure for page",
-                  pageNumber,
-                  jsonData
-                );
-                reject(
-                  new Error(`Unexpected JSON structure for page ${pageNumber}`)
-                );
+                reject(new Error(`Unexpected JSON for page ${pageNumber}`));
               }
             } catch (e) {
-              console.error(
-                "[UserScript ERR] Error parsing JSON for page",
-                pageNumber,
-                e
-              );
               reject(
                 new Error(
-                  `Error parsing JSON for page ${pageNumber}: ${e.message}`
+                  `Error parsing JSON for ${
+                    isContextFetch ? "context" : `page ${pageNumber}`
+                  }: ${e.message}`
                 )
               );
             }
           } else {
-            console.error(
-              "[UserScript ERR] API request failed for page",
-              pageNumber,
-              "Status:",
-              response.status
-            );
             reject(
               new Error(
-                `API request failed for page ${pageNumber}. Status: ${response.status}`
+                `API request failed for ${
+                  isContextFetch ? "context" : `page ${pageNumber}`
+                }. Status: ${response.status}`
               )
             );
           }
         },
         onerror: function (error) {
-          console.error(
-            "[UserScript ERR] Network error fetching page",
-            pageNumber,
-            error
-          );
           reject(
             new Error(
-              `Network error fetching page ${pageNumber}: ${
-                error.message || "Unknown GM_xmlhttpRequest error"
-              }`
+              `Network error for ${
+                isContextFetch ? "context" : `page ${pageNumber}`
+              }: ${error.message || "Unknown GM_xmlhttpRequest error"}`
             )
           );
         },
@@ -466,9 +478,6 @@
   }
 
   function finalizeDisplay(targetElement) {
-    console.log(
-      `[UserScript DBG] Finalizing display with ${allFetchedItems.length} items.`
-    );
     if (allFetchedItems.length === 0) {
       let loadingMessageElement = targetElement.querySelector(
         "#gallery-loading-message"
@@ -496,9 +505,17 @@
 
   function fetchAndDisplayUploads(username, targetElement) {
     allFetchedItems = [];
-    updateLoadingMessage(targetElement, "Loading user uploads (Page 1)...");
+    updateLoadingMessage(targetElement, "Loading user context...");
 
-    fetchPageData(username, 1)
+    fetchPageData(username, 1, true)
+      .then((contextData) => {
+        globalIsPageTargetOwner = contextData.isOwner;
+        console.log(
+          `[UserScript DBG] Page target owner status: ${globalIsPageTargetOwner}`
+        );
+        updateLoadingMessage(targetElement, "Loading user uploads (Page 1)...");
+        return fetchPageData(username, 1);
+      })
       .then((initialPageData) => {
         if (
           !initialPageData ||
@@ -515,16 +532,10 @@
         allFetchedItems = initialPageData.items || [];
         const totalHits = initialPageData.totalHits;
         const totalPages = Math.ceil(totalHits / HITS_PER_PAGE);
-
-        console.log(
-          `[UserScript DBG] Initial fetch: ${allFetchedItems.length} items. Total hits from API: ${totalHits}. Calculated total pages: ${totalPages}.`
-        );
-
         if (totalHits === 0) {
           finalizeDisplay(targetElement);
           return;
         }
-
         if (totalPages > 1) {
           updateLoadingMessage(
             targetElement,
@@ -544,49 +555,37 @@
               })
             );
           }
-
-          Promise.all(pagePromises)
-            .then((pagesDataArray) => {
-              pagesDataArray.forEach((pageResult) => {
-                if (pageResult && pageResult.items) {
-                  allFetchedItems = allFetchedItems.concat(pageResult.items);
-                }
-              });
-              console.log(
-                `[UserScript DBG] All pages fetched. Total items collected: ${allFetchedItems.length}.`
-              );
-              finalizeDisplay(targetElement);
-            })
-            .catch((error) => {
-              console.error(
-                "[UserScript ERR] Error fetching one or more subsequent pages:",
-                error
-              );
-              displayMessage(
-                targetElement,
-                `Error fetching all pages: ${
-                  error.message || error
-                }. Displaying partial results (${
-                  allFetchedItems.length
-                } items).`,
-                "gallery-error-message"
-              );
-              setTimeout(() => finalizeDisplay(targetElement), 3000);
+          return Promise.all(pagePromises).then((pagesDataArray) => {
+            pagesDataArray.forEach((pageResult) => {
+              if (pageResult && pageResult.items)
+                allFetchedItems = allFetchedItems.concat(pageResult.items);
             });
+          });
         } else {
-          finalizeDisplay(targetElement);
+          return Promise.resolve();
         }
+      })
+      .then(() => {
+        console.log(
+          `[UserScript DBG] All data fetched. Total items: ${allFetchedItems.length}.`
+        );
+        finalizeDisplay(targetElement);
       })
       .catch((error) => {
         console.error(
-          "[UserScript ERR] Error fetching initial page (page 1):",
+          "[UserScript ERR] Error during data fetching process:",
           error
         );
         displayMessage(
           targetElement,
-          `Error fetching initial page data: ${error.message || error}`,
+          `Error during data fetching: ${
+            error.message || error
+          }. Displaying partial results if any.`,
           "gallery-error-message"
         );
+        if (allFetchedItems.length > 0) {
+          setTimeout(() => finalizeDisplay(targetElement), 2000);
+        }
       });
   }
 
@@ -597,17 +596,9 @@
       ?.shadowRoot?.querySelector("tab-manager")
       ?.shadowRoot?.querySelector(".active-tab-content");
     if (activeTabContent) {
-      console.log(
-        "[UserScript DBG] Target element (.active-tab-content) found!"
-      );
       return activeTabContent;
     }
     if (retriesLeft > 0) {
-      console.log(
-        `[UserScript DBG] Target not found, ${
-          retriesLeft - 1
-        } retries left. Trying again...`
-      );
       setTimeout(() => {
         const foundElement = findTargetElement(retriesLeft - 1);
         if (foundElement) {
@@ -624,9 +615,6 @@
       }, RETRY_DELAY);
       return null;
     } else {
-      console.error(
-        "[UserScript ERR] Failed to find .active-tab-content after retries."
-      );
       const fallbackDiv = document.createElement("div");
       document.body.insertAdjacentElement("afterbegin", fallbackDiv);
       displayMessage(
