@@ -25,7 +25,7 @@ A Tampermonkey/Greasemonkey userscript that replaces the default item listing wi
     *   Favorites count.
     *   Reviews count.
     *   Subjects.
-*   **Quick Upload Link:** If you are viewing your own user page a small upload icon appears on each item.
+*   **Quick Upload/Edit Links:** If you are viewing your own user page, small upload and edit icons appears on each item.
 
 ## Installation
 If you already have an Userscript Manager, just click [Install Script](https://github.com/FDrach/Archive.org-simple-viewer/raw/refs/heads/master/userPage.user.js), if you don't, fist install one:

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Archive.org Simple Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.5
 // @description  Simple viewer that works with Ctrl+F
 // @author       Franco Drachenberg
 // @match        https://archive.org/details/@*
@@ -14,7 +14,7 @@
   "use strict";
 
   console.log(
-    "[UserScript] Archive.org User Uploads Gallery - Script starting (v1.4)."
+    "[UserScript] Archive.org User Uploads Gallery - Script starting (v1.5)."
   );
 
   const HITS_PER_PAGE = 250;
@@ -34,7 +34,8 @@
       '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="m100 8-2-6-6-2H8L2 2 0 8v51l2 6 6 2h10l1 33 32-33h41l6-2c2-1 2-4 2-6z"/></svg>',
     size: '<svg class="meta-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path id="c" d="M15 12H8c-4 0-3-4 0-5l4-1 1-4c1-3 5-2 5 0v7c0 3 0 3-3 3z"/><path id="l" d="M65 71H33c-3 0-3-6 0-6h32c3 0 3 6 0 6z"/><use href="#c" transform="matrix(-1 0 0 1 98 0)"/><use href="#c" transform="rotate(180 49 49)"/><use href="#c" transform="matrix(1 0 0 -1 0 98)"/><use href="#l" transform="translate(0 -12)"/><use href="#l" transform="translate(0 -24)"/><use href="#l" transform="matrix(.6 0 0 1 13 -38)"/><path fill="currentColor" d="M79 84a1 1 0 0 1-1 1H20a1 1 0 0 1-1-1V14a1 1 0 0 1 1-1h58a1 1 0 0 1 1 1v70Zm-5-65a1 1 0 0 0-1-1H25a1 1 0 0 0-1 1v60a1 1 0 0 0 1 1h48a1 1 0 0 0 1-1V19Z"/></svg>',
 
-    edit: '<svg class="edit-icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="m49 25 28 35H60v31H39V60H22ZM91 8v10H8V8Z"/></svg>',
+    edit: '<svg class="action-icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="currentColor" d="m49 25 28 35H60v31H39V60H22ZM91 8v10H8V8Z"/></svg>',
+    editMeta: '<svg class="action-icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M788 750v172c0 16-9 28-24 33l-17 1-606 1q-13 0-17-2c-12-4-20-13-23-25l-1-12V102c0-15 10-28 24-33l16-1h422c11 0 23 6 32 14l115 115v1l-20 21a1 1 44 0 1-1 0l-98-98-5-4c-12-8-25 1-27 14l-1 10v133l1 9c0 13 10 23 23 23h23a1 1-68 0 1 1 1L482 437a2 2-68 0 1-2 0H230c-25 0-42 19-42 43v221l1 18c4 15 16 27 31 30l12 1h556Zm87-535q-2 0-3-2l-84-76v-1l39-41c14-14 35-17 51-4q19 15 35 31l7 10c5 11 5 22 0 32l-11 14-34 37Z"/><path d="m525 471-27-25 262-276 28 25-262 275-1 1Z"/><path fill="#fff" d="m422 268-73-42a1 1 30 0 1 0-2l16-28a2 2 31 0 1 2-1l98 59c7 4 6 11 6 19q0 5-5 8l-100 61a1 1 58 0 1-1-1l-17-28a1 1 59 0 1 0-1l74-43a1 1 45 0 0 0-1Zm-202 0v1l74 43a1 1-60 0 1 1 0l-17 29a1 1-62 0 1-1 0l-4-3-92-55c-5-3-8-6-8-12-1-8-1-14 7-19l96-57a1 1 4 0 1 1 1l18 29-75 43Z"/><path d="m582 522-27-24a1 1 85 0 1 0-1l262-275 27 25-261 275a1 1-17 0 1-1 0Zm206-85h-99l99-105v105ZM364 609l-3 9-20 43a2 2-77 0 1-2 1h-39l42-76a1 1 46 0 0 0-1l-39-74h40a2 2-12 0 1 1 1l22 46h1l20-46a1 1-78 0 1 1-1h39l-38 74a2 2-46 0 0 0 2l41 75h-42l-24-53Zm379 53h-94a1 1 0 0 1-1 0V511a1 1-55 0 1 1 0h36a1 1 0 0 1 1 0v119h57a1 1 0 0 1 0 1v31ZM602 528h1v134a1 1-45 0 1-1 0h-34l1-56q0-18 4-43a1 1 84 0 0 0-1h-1a2 2 89 0 0-1 2q-14 42-32 85a1 1-78 0 1-1 0h-18l-27-69a1 1-21 0 1 1-2l24-9h1l11 32a1 1-43 0 0 1 0l1-3 16-42a1 1-45 0 1 0-1l39-15 7-4 8-8Zm-100 32-28 11a1 1 5 0 1-1 0l-12-12a1 1-86 0 1-1-1l9-28a1 1 45 0 1 1 0l32 29a1 1 90 0 1 0 1Zm-45 101v-65a2 2-12 0 1 1-2l31-13 2 30v51h-33a1 1-45 0 1-1-1Z"/></svg>',
   };
   const galleryCSS = `
     #custom-gallery-wrapper {
@@ -87,11 +88,14 @@
       background-color: #fff;
       transition: box-shadow 0.2s ease-in-out;
     }
-    .custom-gallery-item-edit-link {
+    .custom-gallery-item-actions {
       position: absolute;
       top: 5px;
       right: 5px;
       z-index: 10;
+      display: flex; gap: 5px;
+    }
+    .action-link {
       background-color: rgba(255, 255, 255, 0.8);
       border-radius: 50%;
       padding: 3px;
@@ -104,11 +108,11 @@
       opacity: 0.7;
       transition: opacity 0.2s;
     }
-    .custom-gallery-item-edit-link:hover {
+    .action-link:hover {
       opacity: 1;
       background-color: white;
     }
-    .custom-gallery-item-edit-link .edit-icon-svg {
+    .action-link .action-icon-svg {
       width: 14px;
       height: 14px;
     }
@@ -228,6 +232,7 @@
     const thumbnailUrl = `https://archive.org/services/img/${identifier}`;
     const itemUrl = `https://archive.org/details/${identifier}`;
     const editUrl = `https://archive.org/upload/?identifier=${identifier}`;
+    const editMetaUrl = `https://archive.org/editxml/${identifier}`;
 
     const numFavorites = fields.num_favorites || 0;
     const numReviews = fields.num_reviews || 0;
@@ -245,13 +250,16 @@
         ? fields.subject.join(", ")
         : "<i>None</i>";
 
-    const editIconHtml = globalIsPageTargetOwner
-      ? `<a href="${editUrl}" target="_blank" class="custom-gallery-item-edit-link" title="Upload to '${identifier}'">${icons.edit}</a>`
+    const ownerActionsHtml = globalIsPageTargetOwner
+      ? `<div class="custom-gallery-item-actions">
+           <a href="${editMetaUrl}" target="_blank" class="action-link" title="Edit metadata for '${identifier}'">${icons.editMeta}</a>
+           <a href="${editUrl}" target="_blank" class="action-link" title="Upload to/Edit files in '${identifier}'">${icons.edit}</a>
+         </div>`
       : "";
 
     return `
               <div class="custom-gallery-item">
-                ${editIconHtml}
+                  ${ownerActionsHtml}
                   <a href="${itemUrl}" target="_blank" class="custom-gallery-item-thumbnail-link" title="View ${title} details (thumbnail)">
                       <img src="${thumbnailUrl}" alt="${title}" loading="lazy">
                   </a>
@@ -298,7 +306,6 @@
       const mainContent = targetElement.querySelector(
         "#custom-gallery-main-content"
       );
-
       const injectionPoint = mainContent || targetElement;
       injectionPoint.innerHTML = `<style>${galleryCSS}</style><div id="${id}">${message}</div>`;
     } else {
